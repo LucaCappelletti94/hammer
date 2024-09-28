@@ -63,6 +63,7 @@ from tqdm.keras import TqdmCallback
 import numpy as np
 import pandas as pd
 from plot_keras_history import plot_history
+from extra_keras_metrics import get_standard_binary_metrics
 
 
 class Classifier:
@@ -121,21 +122,21 @@ class Classifier:
         hidden: Layer = self._build_hidden_layers(input_modalities)
 
         pathway_hidden, pathway_head = self._build_output_head(
-            "pathway_head", hidden, outputs["pathway"].shape[1]
+            "pathway", hidden, outputs["pathway"].shape[1]
         )
         concatenated_pathway = Concatenate(
             axis=-1,
             name="concatenated_pathway",
         )([hidden, pathway_hidden])
         superclass_hidden, superclass_head = self._build_output_head(
-            "superclass_head", concatenated_pathway, outputs["superclass"].shape[1]
+            "superclass", concatenated_pathway, outputs["superclass"].shape[1]
         )
         concatenated_pathway_and_superclass = Concatenate(
             axis=-1,
             name="concatenated_pathway_and_superclass",
         )([concatenated_pathway, superclass_hidden])
         _, class_head = self._build_output_head(
-            "class_head", concatenated_pathway_and_superclass, outputs["class"].shape[1]
+            "class", concatenated_pathway_and_superclass, outputs["class"].shape[1]
         )
 
         self._model = Model(
@@ -155,7 +156,15 @@ class Classifier:
     ):
         """Train the classifier model."""
         self._build(*train)
-        self._model.compile(optimizer="adam", loss="binary_crossentropy")
+        self._model.compile(
+            optimizer="adam",
+            loss="binary_crossentropy",
+            metrics={
+                "pathway": get_standard_binary_metrics(),
+                "superclass": get_standard_binary_metrics(),
+                "class": get_standard_binary_metrics(),
+            },
+        )
         self._model.summary()
         plot_model(
             self._model,
@@ -173,10 +182,10 @@ class Classifier:
             *train,
             epochs=10_000,
             callbacks=[TqdmCallback(verbose=2)],
-            batch_size=2048,
+            batch_size=1024,
             shuffle=True,
             verbose=0,
-            validation_data=val
+            validation_data=val,
         )
         self._history = pd.DataFrame(training_history.history)
 

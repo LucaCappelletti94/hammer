@@ -30,10 +30,7 @@ test_deps =[
     "pytest",
     "pytest-cov",
     "pytest-readme",
-    "tqdm",
     "validate_version_code",
-    "random_csv_generator",
-    "ugly_csv_generator"
 ]
 
 extras = {
@@ -67,12 +64,8 @@ setup(
         "numpy",
         "scikit-learn",
         "plot-keras-history",
-        "pydot"
+        "pydot",
+        "extra-keras-metrics",
     ],
     extras_require=extras,
-    entry_points={
-        'console_scripts': [
-            'csv-trim = np_classifier.cli:main',  # CLI command and entry point
-        ],
-    },
 )

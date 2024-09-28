@@ -170,17 +170,13 @@ class Classifier:
         )
 
         training_history = self._model.fit(
-            list(train[0].values()),
-            list(train[1].values()),
+            *train,
             epochs=10_000,
             callbacks=[TqdmCallback(verbose=2)],
             batch_size=2048,
             shuffle=True,
             verbose=0,
-            validation_data=(
-                list(val[0].values()),
-                list(val[1].values()),
-            ),
+            validation_data=val
         )
         self._history = pd.DataFrame(training_history.history)
 

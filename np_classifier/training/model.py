@@ -63,10 +63,13 @@ from tensorflow.keras.callbacks import (  # pylint: disable=no-name-in-module,im
     ModelCheckpoint,  # pylint: disable=no-name-in-module,import-error
     TerminateOnNaN,  # pylint: disable=no-name-in-module,import-error
     ReduceLROnPlateau,  # pylint: disable=no-name-in-module,import-error
-    EarlyStopping # pylint: disable=no-name-in-module,import-error
+    EarlyStopping,  # pylint: disable=no-name-in-module,import-error
 )
 from tensorflow.keras.optimizers import (  # pylint: disable=no-name-in-module,import-error
     Adam,  # pylint: disable=no-name-in-module,import-error
+)
+from tensorflow.keras.initializers import (  # pylint: disable=no-name-in-module,import-error
+    HeNormal,  # pylint: disable=no-name-in-module,import-error
 )
 from tqdm.keras import TqdmCallback
 import numpy as np
@@ -89,30 +92,63 @@ class Classifier:
         """Build the input modality sub-module."""
         hidden = input_layer
         for _ in range(4):
-            hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(hidden)
+            hidden = Dense(
+                2048,
+                activation="relu",
+                kernel_initializer=HeNormal(),
+            )(hidden)
             hidden = BatchNormalization()(hidden)
-            hidden = Dropout(0.4)(hidden)
+            hidden = Dropout(0.6)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
         """Build the hidden layers sub-module."""
         hidden = Concatenate(axis=-1)(inputs)
         for _ in range(8):
-            hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(hidden)
+            hidden = Dense(
+                1024,
+                activation="relu",
+                kernel_initializer=HeNormal(),
+            )(hidden)
             hidden = BatchNormalization()(hidden)
-            hidden = Dropout(0.4)(hidden)
+            hidden = Dropout(0.6)(hidden)
         return hidden
 
     def _build_pathway_head(
         self, input_layer: Layer, number_of_pathways: int
     ) -> (Layer, Layer):
         """Build the output head sub-module."""
-        hidden = Dense(512, activation="relu", kernel_regularizer='l2')(input_layer)
-        hidden = Dense(256, activation="relu", kernel_regularizer='l2')(hidden)
-        hidden = Dense(128, activation="relu", kernel_regularizer='l2')(hidden)
-        hidden = Dense(64, activation="relu", kernel_regularizer='l2')(hidden)
-        hidden = Dense(32, activation="relu", kernel_regularizer='l2')(hidden)
-        hidden = Dense(16, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dropout(0.5)(input_layer)
+        hidden = Dense(
+            512,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
+        hidden = Dense(
+            256,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
+        hidden = Dense(
+            128,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
+        hidden = Dense(
+            64,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
+        hidden = Dense(
+            32,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
+        hidden = Dense(
+            16,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
         output = Dense(number_of_pathways, name="pathway", activation="sigmoid")(hidden)
         return (hidden, output)
 
@@ -120,9 +156,22 @@ class Classifier:
         self, input_layer: Layer, number_of_superclasses: int
     ) -> (Layer, Layer):
         """Build the output head sub-module."""
-        hidden = Dense(512, activation="relu", kernel_regularizer='l2')(input_layer)
-        hidden = Dense(256, activation="relu", kernel_regularizer='l2')(hidden)
-        hidden = Dense(128, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dropout(0.5)(input_layer)
+        hidden = Dense(
+            512,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
+        hidden = Dense(
+            256,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
+        hidden = Dense(
+            128,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
         output = Dense(number_of_superclasses, name="superclass", activation="sigmoid")(
             hidden
         )
@@ -130,7 +179,12 @@ class Classifier:
 
     def _build_class_head(self, input_layer: Layer, number_of_classes: int) -> Layer:
         """Build the output head sub-module."""
-        hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(input_layer)
+        hidden = Dropout(0.5)(input_layer)
+        hidden = Dense(
+            1024,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+        )(hidden)
         output = Dense(number_of_classes, name="class", activation="sigmoid")(hidden)
         return output
 
@@ -222,7 +276,7 @@ class Classifier:
         learning_rate_scheduler = ReduceLROnPlateau(
             monitor="val_loss",  # Monitor the validation loss to avoid overfitting.
             factor=0.8,  # Reduce the learning rate by a small factor (e.g., 20%) to prevent abrupt drops.
-            patience=20,  # Wait for 20 epochs without improvement before reducing LR (long patience to allow grokking).
+            patience=100,  # Wait for 20 epochs without improvement before reducing LR (long patience to allow grokking).
             verbose=1,  # Verbose output for logging learning rate reductions.
             mode="min",  # Minimize the validation loss.
             min_delta=1e-4,  # Small change threshold for improvement, encouraging gradual learning.
@@ -249,7 +303,7 @@ class Classifier:
                 TerminateOnNaN(),
                 cyclic_lr,
                 learning_rate_scheduler,
-                early_stopping
+                early_stopping,
             ],
             batch_size=4096,
             shuffle=True,

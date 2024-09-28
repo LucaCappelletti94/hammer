@@ -1,0 +1,15 @@
+[
+    {
+        "smiles": "CCN1CC2CCC(OC)C34C2CC(C13)C1(O)CC(OC)C2(O)CC4C1C2OC(=O)c1ccccc1",
+        "pathway_labels": [
+            "Alkaloids",
+            "Terpenoids"
+        ],
+        "superclass_labels": [
+            "Pseudoalkaloids"
+        ],
+        "class_labels": [
+            "Terpenoid alkaloids"
+        ]
+    }
+]

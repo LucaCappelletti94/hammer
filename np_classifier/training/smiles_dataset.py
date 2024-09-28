@@ -100,9 +100,6 @@ class SmilesDataset:
                     augmented_smiles.append(smile.into_homologue(homologue))
                     smiles_in_training_set.add(homologue)
 
-        print(f"Augmented training set with {len(augmented_smiles)} homologues.")
-        print(f"Original training set size: {len(training_smiles)}")
-
         self._training_smiles: List[Smiles] = training_smiles + augmented_smiles
         self._validation_splitter = StratifiedShuffleSplit(
             n_splits=number_of_splits,

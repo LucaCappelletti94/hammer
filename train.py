@@ -8,7 +8,7 @@ def train():
     """Train the model."""
     dataset = SmilesDataset()
     trainer = Trainer(dataset)
-    trainer.train()
+    trainer.holdouts()
 
 
 if __name__ == "__main__":

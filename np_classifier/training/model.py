@@ -59,6 +59,10 @@ from tensorflow.keras.layers import (  # pylint: disable=no-name-in-module,impor
 from tensorflow.keras.utils import (  # pylint: disable=no-name-in-module,import-error
     plot_model,  # pylint: disable=no-name-in-module,import-error
 )
+from tensorflow.keras.callbacks import (  # pylint: disable=no-name-in-module,import-error
+    ModelCheckpoint,  # pylint: disable=no-name-in-module,import-error
+    TerminateOnNaN,  # pylint: disable=no-name-in-module,import-error
+)
 from tqdm.keras import TqdmCallback
 import numpy as np
 import pandas as pd
@@ -69,10 +73,11 @@ from extra_keras_metrics import get_standard_binary_metrics
 class Classifier:
     """Class representing the multi-modal multi-class classifier model."""
 
-    def __init__(self):
+    def __init__(self, number_of_epochs: int = 10_000):
         """Initialize the classifier model."""
         self._model: Optional[Model] = None
         self._history: Optional[pd.DataFrame] = None
+        self._number_of_epochs = number_of_epochs
 
     def _build_input_modality(self, input_layer: Input) -> Layer:
         """Build the input modality sub-module."""
@@ -153,6 +158,7 @@ class Classifier:
         self,
         train: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]],
         val: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]],
+        holdout_number: Optional[int] = None,
     ):
         """Train the classifier model."""
         self._build(*train)
@@ -165,7 +171,6 @@ class Classifier:
                 "class": get_standard_binary_metrics(),
             },
         )
-        self._model.summary()
         plot_model(
             self._model,
             to_file="model.png",
@@ -178,18 +183,36 @@ class Classifier:
             show_trainable=True,
         )
 
+        if holdout_number is not None:
+            model_checkpoint_path = f"model_checkpoint_{holdout_number}.keras"
+        else:
+            model_checkpoint_path = "model_checkpoint.keras"
+
+        model_checkpoint = ModelCheckpoint(
+            model_checkpoint_path,
+            monitor="val_loss",
+            save_best_only=True,
+            save_weights_only=False,
+            mode="auto",
+            save_freq="epoch",
+            verbose=1,
+        )
+
         training_history = self._model.fit(
             *train,
-            epochs=10_000,
-            callbacks=[TqdmCallback(verbose=2)],
-            batch_size=1024,
+            epochs=self._number_of_epochs,
+            callbacks=[TqdmCallback(verbose=2), model_checkpoint, TerminateOnNaN()],
+            batch_size=4096,
             shuffle=True,
             verbose=0,
             validation_data=val,
         )
         self._history = pd.DataFrame(training_history.history)
 
-        self._history.to_csv("history.csv")
+        if holdout_number is not None:
+            self._history.to_csv(f"history_{holdout_number}.csv")
+        else:
+            self._history.to_csv("history.csv")
 
     def plot_training_history(self):
         """Plot the training history."""
@@ -197,6 +220,8 @@ class Classifier:
             raise ValueError("No training history available.")
         plot_history(self._history)
 
-    def evaluate(self, test: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]):
+    def evaluate(
+        self, test: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]
+    ) -> Dict[str, float]:
         """Evaluate the classifier model."""
-        return self._model.evaluate(test[0].values(), test[1].values())
+        return self._model.evaluate(*test, verbose=0, return_dict=True)

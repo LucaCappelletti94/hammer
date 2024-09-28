@@ -91,7 +91,7 @@ class Classifier:
         for _ in range(4):
             hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(hidden)
             hidden = BatchNormalization()(hidden)
-            hidden = Dropout(0.6)(hidden)
+            hidden = Dropout(0.4)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
@@ -100,7 +100,7 @@ class Classifier:
         for _ in range(8):
             hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(hidden)
             hidden = BatchNormalization()(hidden)
-            hidden = Dropout(0.6)(hidden)
+            hidden = Dropout(0.4)(hidden)
         return hidden
 
     def _build_pathway_head(
@@ -120,8 +120,7 @@ class Classifier:
         self, input_layer: Layer, number_of_superclasses: int
     ) -> (Layer, Layer):
         """Build the output head sub-module."""
-        hidden = Dropout(0.6)(input_layer)
-        hidden = Dense(512, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dense(512, activation="relu", kernel_regularizer='l2')(input_layer)
         hidden = Dense(256, activation="relu", kernel_regularizer='l2')(hidden)
         hidden = Dense(128, activation="relu", kernel_regularizer='l2')(hidden)
         output = Dense(number_of_superclasses, name="superclass", activation="sigmoid")(
@@ -131,8 +130,7 @@ class Classifier:
 
     def _build_class_head(self, input_layer: Layer, number_of_classes: int) -> Layer:
         """Build the output head sub-module."""
-        hidden = Dropout(0.6)(input_layer)
-        hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(input_layer)
         output = Dense(number_of_classes, name="class", activation="sigmoid")(hidden)
         return output
 

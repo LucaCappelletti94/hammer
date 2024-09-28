@@ -62,12 +62,18 @@ from tensorflow.keras.utils import (  # pylint: disable=no-name-in-module,import
 from tensorflow.keras.callbacks import (  # pylint: disable=no-name-in-module,import-error
     ModelCheckpoint,  # pylint: disable=no-name-in-module,import-error
     TerminateOnNaN,  # pylint: disable=no-name-in-module,import-error
+    ReduceLROnPlateau,  # pylint: disable=no-name-in-module,import-error
+    EarlyStopping # pylint: disable=no-name-in-module,import-error
+)
+from tensorflow.keras.optimizers import (  # pylint: disable=no-name-in-module,import-error
+    Adam,  # pylint: disable=no-name-in-module,import-error
 )
 from tqdm.keras import TqdmCallback
 import numpy as np
 import pandas as pd
 from plot_keras_history import plot_history
 from extra_keras_metrics import get_standard_binary_metrics
+from np_classifier.training.cyclic_lr import CyclicLR
 
 
 class Classifier:
@@ -81,37 +87,54 @@ class Classifier:
 
     def _build_input_modality(self, input_layer: Input) -> Layer:
         """Build the input modality sub-module."""
-        hidden = Dense(512, activation="relu", name=f"dense_{input_layer.name}")(
-            input_layer
-        )
-        hidden = BatchNormalization()(hidden)
-        hidden = Dropout(0.5)(hidden)
+        hidden = input_layer
+        for _ in range(4):
+            hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(hidden)
+            hidden = BatchNormalization()(hidden)
+            hidden = Dropout(0.6)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
         """Build the hidden layers sub-module."""
         hidden = Concatenate(axis=-1)(inputs)
-        hidden = Dense(1024, activation="relu")(hidden)
-        hidden = BatchNormalization()(hidden)
-        hidden = Dropout(0.5)(hidden)
-        hidden = Dense(512, activation="relu")(hidden)
-        hidden = BatchNormalization()(hidden)
-        hidden = Dropout(0.5)(hidden)
-        hidden = Dense(1024, activation="relu")(hidden)
-        hidden = BatchNormalization()(hidden)
-        hidden = Dropout(0.5)(hidden)
-        hidden = Dense(512, activation="relu")(hidden)
-        hidden = BatchNormalization()(hidden)
-        hidden = Dropout(0.5)(hidden)
+        for _ in range(8):
+            hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(hidden)
+            hidden = BatchNormalization()(hidden)
+            hidden = Dropout(0.6)(hidden)
         return hidden
 
-    def _build_output_head(
-        self, name: str, input_layer: Layer, output_size: int
+    def _build_pathway_head(
+        self, input_layer: Layer, number_of_pathways: int
     ) -> (Layer, Layer):
         """Build the output head sub-module."""
-        hidden = Dense(512, activation="relu")(input_layer)
-        output = Dense(output_size, name=name, activation="sigmoid")(hidden)
+        hidden = Dense(512, activation="relu", kernel_regularizer='l2')(input_layer)
+        hidden = Dense(256, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dense(128, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dense(64, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dense(32, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dense(16, activation="relu", kernel_regularizer='l2')(hidden)
+        output = Dense(number_of_pathways, name="pathway", activation="sigmoid")(hidden)
         return (hidden, output)
+
+    def _build_superclass_head(
+        self, input_layer: Layer, number_of_superclasses: int
+    ) -> (Layer, Layer):
+        """Build the output head sub-module."""
+        hidden = Dropout(0.6)(input_layer)
+        hidden = Dense(512, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dense(256, activation="relu", kernel_regularizer='l2')(hidden)
+        hidden = Dense(128, activation="relu", kernel_regularizer='l2')(hidden)
+        output = Dense(number_of_superclasses, name="superclass", activation="sigmoid")(
+            hidden
+        )
+        return (hidden, output)
+
+    def _build_class_head(self, input_layer: Layer, number_of_classes: int) -> Layer:
+        """Build the output head sub-module."""
+        hidden = Dropout(0.6)(input_layer)
+        hidden = Dense(1024, activation="relu", kernel_regularizer='l2')(hidden)
+        output = Dense(number_of_classes, name="class", activation="sigmoid")(hidden)
+        return output
 
     def _build(self, inputs: Dict[str, np.ndarray], outputs: Dict[str, np.ndarray]):
         """Build the classifier model."""
@@ -126,22 +149,22 @@ class Classifier:
 
         hidden: Layer = self._build_hidden_layers(input_modalities)
 
-        pathway_hidden, pathway_head = self._build_output_head(
-            "pathway", hidden, outputs["pathway"].shape[1]
+        pathway_hidden, pathway_head = self._build_pathway_head(
+            hidden, outputs["pathway"].shape[1]
         )
         concatenated_pathway = Concatenate(
             axis=-1,
             name="concatenated_pathway",
         )([hidden, pathway_hidden])
-        superclass_hidden, superclass_head = self._build_output_head(
-            "superclass", concatenated_pathway, outputs["superclass"].shape[1]
+        superclass_hidden, superclass_head = self._build_superclass_head(
+            concatenated_pathway, outputs["superclass"].shape[1]
         )
         concatenated_pathway_and_superclass = Concatenate(
             axis=-1,
             name="concatenated_pathway_and_superclass",
         )([concatenated_pathway, superclass_hidden])
-        _, class_head = self._build_output_head(
-            "class", concatenated_pathway_and_superclass, outputs["class"].shape[1]
+        class_head = self._build_class_head(
+            concatenated_pathway_and_superclass, outputs["class"].shape[1]
         )
 
         self._model = Model(
@@ -163,7 +186,7 @@ class Classifier:
         """Train the classifier model."""
         self._build(*train)
         self._model.compile(
-            optimizer="adam",
+            optimizer=Adam(),
             loss="binary_crossentropy",
             metrics={
                 "pathway": get_standard_binary_metrics(),
@@ -198,10 +221,38 @@ class Classifier:
             verbose=1,
         )
 
+        learning_rate_scheduler = ReduceLROnPlateau(
+            monitor="val_loss",  # Monitor the validation loss to avoid overfitting.
+            factor=0.8,  # Reduce the learning rate by a small factor (e.g., 20%) to prevent abrupt drops.
+            patience=20,  # Wait for 20 epochs without improvement before reducing LR (long patience to allow grokking).
+            verbose=1,  # Verbose output for logging learning rate reductions.
+            mode="min",  # Minimize the validation loss.
+            min_delta=1e-4,  # Small change threshold for improvement, encouraging gradual learning.
+            cooldown=10,  # After a learning rate reduction, wait 10 epochs before resuming normal operation.
+            min_lr=1e-6,  # Set a minimum learning rate to avoid reducing it too much and stalling learning.
+        )
+
+        cyclic_lr = CyclicLR()
+
+        early_stopping = EarlyStopping(
+            monitor="val_loss",
+            patience=500,
+            verbose=1,
+            mode="min",
+            restore_best_weights=True,
+        )
+
         training_history = self._model.fit(
             *train,
             epochs=self._number_of_epochs,
-            callbacks=[TqdmCallback(verbose=2), model_checkpoint, TerminateOnNaN()],
+            callbacks=[
+                TqdmCallback(verbose=2),
+                model_checkpoint,
+                TerminateOnNaN(),
+                cyclic_lr,
+                learning_rate_scheduler,
+                early_stopping
+            ],
             batch_size=4096,
             shuffle=True,
             verbose=0,

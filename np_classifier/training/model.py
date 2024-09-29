@@ -76,7 +76,6 @@ import numpy as np
 import pandas as pd
 from plot_keras_history import plot_history
 from extra_keras_metrics import get_standard_binary_metrics
-from np_classifier.training.cyclic_lr import CyclicLR
 
 
 class Classifier:
@@ -96,9 +95,10 @@ class Classifier:
                 2048,
                 activation="relu",
                 kernel_initializer=HeNormal(),
+                kernel_regularizer="l2",
             )(hidden)
             hidden = BatchNormalization()(hidden)
-            hidden = Dropout(0.6)(hidden)
+            hidden = Dropout(0.5)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
@@ -109,45 +109,51 @@ class Classifier:
                 1024,
                 activation="relu",
                 kernel_initializer=HeNormal(),
+                kernel_regularizer="l2",
             )(hidden)
             hidden = BatchNormalization()(hidden)
-            hidden = Dropout(0.6)(hidden)
+            hidden = Dropout(0.5)(hidden)
         return hidden
 
     def _build_pathway_head(
         self, input_layer: Layer, number_of_pathways: int
     ) -> (Layer, Layer):
         """Build the output head sub-module."""
-        hidden = Dropout(0.5)(input_layer)
         hidden = Dense(
             512,
             activation="relu",
             kernel_initializer=HeNormal(),
-        )(hidden)
+            kernel_regularizer="l2",
+        )(input_layer)
         hidden = Dense(
             256,
             activation="relu",
             kernel_initializer=HeNormal(),
+            kernel_regularizer="l2",
         )(hidden)
         hidden = Dense(
             128,
             activation="relu",
             kernel_initializer=HeNormal(),
+            kernel_regularizer="l2",
         )(hidden)
         hidden = Dense(
             64,
             activation="relu",
             kernel_initializer=HeNormal(),
+            kernel_regularizer="l2",
         )(hidden)
         hidden = Dense(
             32,
             activation="relu",
             kernel_initializer=HeNormal(),
+            kernel_regularizer="l2",
         )(hidden)
         hidden = Dense(
             16,
             activation="relu",
             kernel_initializer=HeNormal(),
+            kernel_regularizer="l2",
         )(hidden)
         output = Dense(number_of_pathways, name="pathway", activation="sigmoid")(hidden)
         return (hidden, output)
@@ -156,21 +162,23 @@ class Classifier:
         self, input_layer: Layer, number_of_superclasses: int
     ) -> (Layer, Layer):
         """Build the output head sub-module."""
-        hidden = Dropout(0.5)(input_layer)
         hidden = Dense(
             512,
             activation="relu",
             kernel_initializer=HeNormal(),
-        )(hidden)
+            kernel_regularizer="l2",
+        )(input_layer)
         hidden = Dense(
             256,
             activation="relu",
             kernel_initializer=HeNormal(),
+            kernel_regularizer="l2",
         )(hidden)
         hidden = Dense(
             128,
             activation="relu",
             kernel_initializer=HeNormal(),
+            kernel_regularizer="l2",
         )(hidden)
         output = Dense(number_of_superclasses, name="superclass", activation="sigmoid")(
             hidden
@@ -179,12 +187,18 @@ class Classifier:
 
     def _build_class_head(self, input_layer: Layer, number_of_classes: int) -> Layer:
         """Build the output head sub-module."""
-        hidden = Dropout(0.5)(input_layer)
         hidden = Dense(
             1024,
             activation="relu",
             kernel_initializer=HeNormal(),
-        )(hidden)
+            kernel_regularizer="l2",
+        )(input_layer)
+        hidden = Dense(
+            768,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+            kernel_regularizer="l2",
+        )(input_layer)
         output = Dense(number_of_classes, name="class", activation="sigmoid")(hidden)
         return output
 
@@ -270,7 +284,7 @@ class Classifier:
             save_weights_only=False,
             mode="auto",
             save_freq="epoch",
-            verbose=1,
+            verbose=0,
         )
 
         learning_rate_scheduler = ReduceLROnPlateau(
@@ -280,15 +294,13 @@ class Classifier:
             verbose=1,  # Verbose output for logging learning rate reductions.
             mode="min",  # Minimize the validation loss.
             min_delta=1e-4,  # Small change threshold for improvement, encouraging gradual learning.
-            cooldown=10,  # After a learning rate reduction, wait 10 epochs before resuming normal operation.
+            cooldown=150,  # After a learning rate reduction, wait 10 epochs before resuming normal operation.
             min_lr=1e-6,  # Set a minimum learning rate to avoid reducing it too much and stalling learning.
         )
 
-        cyclic_lr = CyclicLR()
-
         early_stopping = EarlyStopping(
             monitor="val_loss",
-            patience=500,
+            patience=1000,
             verbose=1,
             mode="min",
             restore_best_weights=True,
@@ -298,12 +310,23 @@ class Classifier:
             *train,
             epochs=self._number_of_epochs,
             callbacks=[
-                TqdmCallback(verbose=2),
+                TqdmCallback(
+                    verbose=1,
+                    metrics=[
+                        "class_mcc",
+                        "val_class_mcc",
+                        "class_loss",
+                        "val_class_loss",
+                        "superclass_loss",
+                        "val_superclass_loss",
+                        "pathway_loss",
+                        "val_pathway_loss",
+                    ],
+                ),
                 model_checkpoint,
                 TerminateOnNaN(),
-                cyclic_lr,
-                learning_rate_scheduler,
                 early_stopping,
+                learning_rate_scheduler,
             ],
             batch_size=4096,
             shuffle=True,

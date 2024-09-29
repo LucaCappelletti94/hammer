@@ -2,12 +2,12 @@
 
 import silence_tensorflow.auto # pylint: disable=unused-import
 import pandas as pd
-from np_classifier.training import Trainer, SmilesDataset
+from np_classifier.training import Trainer, Dataset
 
 
 def train():
     """Train the model."""
-    dataset = SmilesDataset()
+    dataset = Dataset()
     trainer = Trainer(dataset)
     performance: pd.DataFrame = trainer.holdouts()
     performance.to_csv("performance.csv", index=False)

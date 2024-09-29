@@ -6,8 +6,6 @@ from typing import List
 from rdkit.Chem import Mol, Atom  # pylint: disable=no-name-in-module
 from rdkit.Chem import AddHs  # pylint: disable=no-name-in-module
 from rdkit.Chem import RemoveHs  # pylint: disable=no-name-in-module
-from rdkit.Chem import MolToSmiles  # pylint: disable=no-name-in-module
-from rdkit.Chem import MolFromSmiles  # pylint: disable=no-name-in-module
 from rdkit.Chem import SanitizeMol  # pylint: disable=no-name-in-module
 
 def get_hydroxyl_groups_candidates(molecule: Mol) -> List[Atom]:
@@ -42,7 +40,7 @@ def get_methoxyl_groups_candidates(molecule: Mol) -> List[Atom]:
     ]
 
 
-def generate_methoxylated_homologues(smiles: str) -> List[str]:
+def generate_methoxylated_homologues(molecule: Mol) -> List[Mol]:
     """Returns a list of methoxylated homologues of a molecule.
 
     Parameters
@@ -50,7 +48,6 @@ def generate_methoxylated_homologues(smiles: str) -> List[str]:
     smiles : str
         The SMILES string of the molecule.
     """
-    molecule: Mol = MolFromSmiles(smiles, sanitize=True)
     molecule = AddHs(molecule)
     methoxylated_homologues = []
     number_of_hydroxyl_groups_candidates = len(get_hydroxyl_groups_candidates(molecule))
@@ -68,13 +65,10 @@ def generate_methoxylated_homologues(smiles: str) -> List[str]:
         SanitizeMol(molecule_clone)
 
         methoxylated_homologues.append(molecule_clone)
-    return [
-        MolToSmiles(homologue)
-        for homologue in methoxylated_homologues
-    ]
+    return methoxylated_homologues
 
 
-def generate_demethoxylated_homologues(smiles: str) -> List[str]:
+def generate_demethoxylated_homologues(molecule: Mol) -> List[Mol]:
     """Returns a list of demethoxylated homologues of a molecule.
 
     Parameters
@@ -82,7 +76,6 @@ def generate_demethoxylated_homologues(smiles: str) -> List[str]:
     smiles : str
         The SMILES string of the molecule.
     """
-    molecule: Mol = MolFromSmiles(smiles, sanitize=True)
     demethoxylated_homologues = []
     number_of_metoxyl_groups_candidates = len(get_methoxyl_groups_candidates(molecule))
     for atom_number in range(number_of_metoxyl_groups_candidates):
@@ -95,7 +88,4 @@ def generate_demethoxylated_homologues(smiles: str) -> List[str]:
         SanitizeMol(molecule_clone)
 
         demethoxylated_homologues.append(molecule_clone)
-    return [
-        MolToSmiles(homologue)
-        for homologue in demethoxylated_homologues
-    ]
+    return demethoxylated_homologues

@@ -1,6 +1,6 @@
 """Submodule handling the training of the multi-modal multi-class classifier."""
 
-from np_classifier.training.smiles_dataset import SmilesDataset
+from np_classifier.training.smiles_dataset import Dataset
 from np_classifier.training.model import Classifier
 import tensorflow as tf
 import pandas as pd
@@ -9,9 +9,9 @@ import pandas as pd
 class Trainer:
     """Class handling the training of the multi-modal multi-class classifier."""
 
-    def __init__(self, smiles_dataset: SmilesDataset, number_of_epochs: int = 10_000):
+    def __init__(self, smiles_dataset: Dataset, number_of_epochs: int = 10_000):
         """Initialize the trainer."""
-        assert isinstance(smiles_dataset, SmilesDataset)
+        assert isinstance(smiles_dataset, Dataset)
         self._smiles_dataset = smiles_dataset
         self._number_of_epochs = number_of_epochs
         gpu_devices = tf.config.experimental.list_physical_devices("GPU")

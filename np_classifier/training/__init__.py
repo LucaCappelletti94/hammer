@@ -2,6 +2,6 @@
 
 from np_classifier.training.model import Classifier
 from np_classifier.training.trainer import Trainer
-from np_classifier.training.smiles_dataset import SmilesDataset
+from np_classifier.training.smiles_dataset import Dataset
 
 __all__ = ["Classifier", "Trainer"]

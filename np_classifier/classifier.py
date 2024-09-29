@@ -5,9 +5,9 @@ import numpy as np
 from downloaders import BaseDownloader
 import compress_json
 from tensorflow import keras  # pylint: disable=no-name-in-module
-
+from rdkit.Chem import Mol  # pylint: disable=no-name-in-module
 from np_classifier.utils import (
-    smiles_to_morgan_fingerprint,
+    to_morgan_fingerprint,
     as_list,
     as_one_hot,
 )
@@ -131,10 +131,10 @@ class NPClassifier:
         """Returns the number of classes."""
         return len(self._classes)
 
-    def classify(self, smiles: str) -> Classification:
+    def classify(self, molecule: Mol) -> Classification:
         """Classifies a natural product given its SMILES string."""
 
-        smiles_fingerprint = smiles_to_morgan_fingerprint(smiles, radius=2, n_bits=2048)
+        smiles_fingerprint = to_morgan_fingerprint(molecule, radius=2, n_bits=2048)
 
         pathway_predictions = self._model_pathway.predict(smiles_fingerprint)[0]
         superclass_predictions = self._model_super.predict(smiles_fingerprint)[0]

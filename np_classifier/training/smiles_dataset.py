@@ -7,20 +7,23 @@ import compress_json
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
+from rdkit.Chem import Mol # pylint: disable=no-name-in-module
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
-from np_classifier.training.smiles import Smiles
+from np_classifier.training.molecule import Molecule
 from np_classifier.training.augmentation_strategies import (
     generate_demethoxylated_homologues,
     generate_methoxylated_homologues,
 )
 
-def _get_fingerprints(smile: (Smiles, int, int)) -> Dict[str, np.ndarray]:
-    """Return the fingerprints of a SMILES."""
-    smile, radius, n_bits = smile
-    return smile.fingerprint(radius=radius, n_bits=n_bits)
 
-class SmilesDataset:
-    """Class handling the SMILES dataset for training."""
+def _get_fingerprints(molecule: (Molecule, int, int)) -> Dict[str, np.ndarray]:
+    """Return the fingerprints of a Molecule."""
+    molecule, radius, n_bits = molecule
+    return molecule.fingerprint(radius=radius, n_bits=n_bits)
+
+
+class Dataset:
+    """Class handling the dataset for training."""
 
     def __init__(
         self,
@@ -36,8 +39,8 @@ class SmilesDataset:
         local_path = os.path.dirname(os.path.abspath(__file__))
         categorical_smiles = os.path.join(local_path, "categorical.csv.gz")
         multi_label_smiles = os.path.join(local_path, "multi_label.json")
-        smiles: List[Smiles] = [
-            Smiles(
+        molecules: List[Molecule] = [
+            Molecule.from_smiles(
                 smiles=row.smiles,
                 pathway_labels=[row.pathway_label],
                 superclass_labels=[row.superclass_label],
@@ -45,7 +48,7 @@ class SmilesDataset:
             )
             for row in pd.read_csv(categorical_smiles).itertuples()
         ] + [
-            Smiles(
+            Molecule.from_smiles(
                 smiles=entry["smiles"],
                 pathway_labels=entry["pathway_labels"],
                 superclass_labels=entry["superclass_labels"],
@@ -57,50 +60,56 @@ class SmilesDataset:
         # of pathway, superclass and class labels, we can achieve a reasonable stratification
         # by stratifying based on the first class label.
         train_indices, test_indices = train_test_split(
-            np.arange(len(smiles)),
-            stratify=[smiles.first_class_label for smiles in smiles],
+            np.arange(len(molecules)),
+            stratify=[molecules.first_class_label for molecules in molecules],
             test_size=test_size,
             random_state=random_state,
         )
 
-        self._test_smiles: List[Smiles] = [smiles[i] for i in test_indices]
+        self._test_molecules: List[Molecule] = [molecules[i] for i in test_indices]
 
         # We augment the training set.
-        smiles_in_training_set: Set[str] = {smiles[i].smiles for i in train_indices}
-        training_smiles: List[Smiles] = [smiles[i] for i in train_indices]
-        augmented_smiles: List[Smiles] = []
+        molecules_in_training_set: Set[Mol] = {molecules[i].molecule for i in train_indices}
+        training_molecules: List[Molecule] = [molecules[i] for i in train_indices]
+        augmented_molecules: List[Molecule] = []
 
         with Pool() as pool:
-            demethoxylated_homologues: List[List[str]] = list(
+            demethoxylated_homologues: List[List[Mol]] = list(
                 tqdm(
-                    pool.imap(generate_demethoxylated_homologues, (smile.smiles for smile in training_smiles)),
+                    pool.imap(
+                        generate_demethoxylated_homologues,
+                        (molecule.molecule for molecule in training_molecules),
+                    ),
                     desc="Generating demethoxylated homologues",
                     leave=False,
                     dynamic_ncols=True,
                     disable=not verbose,
-                    total=len(training_smiles),
+                    total=len(training_molecules),
                     unit="molecule",
                 )
             )
-            methoxylated_homologues: List[List[str]] = list(
+            methoxylated_homologues: List[List[Mol]] = list(
                 tqdm(
-                    pool.imap(generate_methoxylated_homologues, (smile.smiles for smile in training_smiles)),
+                    pool.imap(
+                        generate_methoxylated_homologues,
+                        (molecule.molecule for molecule in training_molecules),
+                    ),
                     desc="Generating methoxylated homologues",
                     leave=False,
                     dynamic_ncols=True,
                     disable=not verbose,
-                    total=len(training_smiles),
+                    total=len(training_molecules),
                     unit="molecule",
                 )
             )
 
-        for i, smile in enumerate(training_smiles):
+        for i, molecule in enumerate(training_molecules):
             for homologue in demethoxylated_homologues[i] + methoxylated_homologues[i]:
-                if homologue not in smiles_in_training_set:
-                    augmented_smiles.append(smile.into_homologue(homologue))
-                    smiles_in_training_set.add(homologue)
+                if homologue not in molecules_in_training_set:
+                    augmented_molecules.append(molecule.into_homologue(homologue))
+                    molecules_in_training_set.add(homologue)
 
-        self._training_smiles: List[Smiles] = training_smiles + augmented_smiles
+        self._training_molecules: List[Molecule] = training_molecules + augmented_molecules
         self._validation_splitter = StratifiedShuffleSplit(
             n_splits=number_of_splits,
             test_size=validation_size,
@@ -110,37 +119,40 @@ class SmilesDataset:
         self._radius = radius
         self._n_bits = n_bits
 
-    def smiles_to_dataset(
-        self, smiles: List[Smiles]
+    def to_dataset(
+        self, molecules: List[Molecule]
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
-        """Convert a list of SMILES to a dataset."""
-        number_of_smiles = len(smiles)
-        
+        """Convert a list of Molecules to a dataset."""
+        number_of_molecules = len(molecules)
+
         with Pool() as pool:
             fingerprints = list(
                 tqdm(
-                    pool.imap(_get_fingerprints, ((smile, self._radius, self._n_bits) for smile in smiles)),
+                    pool.imap(
+                        _get_fingerprints,
+                        ((molecule, self._radius, self._n_bits) for molecule in molecules),
+                    ),
                     desc="Generating fingerprints",
                     leave=False,
                     dynamic_ncols=True,
                     disable=not self._verbose,
-                    total=number_of_smiles,
+                    total=number_of_molecules,
                     unit="molecule",
                 )
             )
 
-        smile_labels = smiles[0].labels()
+        molecule_labels = molecules[0].labels()
         dataset = {
-            key: np.zeros((number_of_smiles, value.shape[1]), dtype=np.float32)
+            key: np.zeros((number_of_molecules, value.shape[1]), dtype=np.float32)
             for key, value in fingerprints[0].items()
         }
         labels = {
-            key: np.zeros((number_of_smiles, value.shape[0]), dtype=np.float32)
-            for key, value in smile_labels.items()
+            key: np.zeros((number_of_molecules, value.shape[0]), dtype=np.float32)
+            for key, value in molecule_labels.items()
         }
 
-        for i, (smile, fingerprint) in enumerate(zip(smiles, fingerprints)):
-            label = smile.labels()
+        for i, (molecule, fingerprint) in enumerate(zip(molecules, fingerprints)):
+            label = molecule.labels()
             for key in dataset:
                 dataset[key][i] = fingerprint[key]
             for key in labels:
@@ -150,11 +162,11 @@ class SmilesDataset:
 
     def test(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """Return the test set."""
-        return self.smiles_to_dataset(self._test_smiles)
+        return self.to_dataset(self._test_molecules)
 
     def train(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """Return the training set."""
-        return self.smiles_to_dataset(self._training_smiles)
+        return self.to_dataset(self._training_molecules)
 
     def train_split(
         self,
@@ -167,8 +179,8 @@ class SmilesDataset:
         """Split the dataset into training and test sets."""
         for train_indices, validation_indices in tqdm(
             self._validation_splitter.split(
-                np.arange(len(self._training_smiles)),
-                [smiles.first_class_label for smiles in self._training_smiles],
+                np.arange(len(self._training_molecules)),
+                [molecule.first_class_label for molecule in self._training_molecules],
             ),
             total=self._validation_splitter.get_n_splits(),
             desc="Training and validation splits",
@@ -178,10 +190,10 @@ class SmilesDataset:
             unit="split",
         ):
             yield (
-                self.smiles_to_dataset(
-                    [self._training_smiles[i] for i in train_indices]
+                self.to_dataset(
+                    [self._training_molecules[i] for i in train_indices]
                 ),
-                self.smiles_to_dataset(
-                    [self._training_smiles[i] for i in validation_indices]
+                self.to_dataset(
+                    [self._training_molecules[i] for i in validation_indices]
                 ),
             )

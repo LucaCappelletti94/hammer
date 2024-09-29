@@ -22,8 +22,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -36,8 +35,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -50,8 +48,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -64,8 +61,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -78,8 +74,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -92,8 +87,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -106,8 +100,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -122,8 +115,7 @@
         ],
         "class_labels": [
             "Dipeptides",
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -136,8 +128,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Pro)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Pro)"
         ]
     },
     {
@@ -150,8 +141,7 @@
             "Peptide alkaloids"
         ],
         "class_labels": [
-            "Indole diketopiperazine alkaloids (L-Trp",
-            "L-Ala)"
+            "Indole diketopiperazine alkaloids (L-Trp, L-Ala)"
         ]
     },
     {
@@ -1657,7 +1647,7 @@
             "Cyclic peptides",
             "Depsipeptides",
             "Lipopeptides",
-            "RiPPs-Lasso peptides"
+            "RiPPs"
         ]
     },
     {
@@ -1685,7 +1675,6 @@
             "Oligopeptides"
         ],
         "class_labels": [
-            "Ahp-containing cyclodepsipeptides",
             "Cyclic peptides",
             "Depsipeptides",
             "Lipopeptides"
@@ -1701,7 +1690,6 @@
             "Oligopeptides"
         ],
         "class_labels": [
-            "Ahp-containing cyclodepsipeptides",
             "Cyclic peptides",
             "Depsipeptides",
             "Lipopeptides"
@@ -1717,7 +1705,6 @@
             "Oligopeptides"
         ],
         "class_labels": [
-            "Ahp-containing cyclodepsipeptides",
             "Cyclic peptides",
             "Depsipeptides",
             "Lipopeptides"
@@ -1733,7 +1720,6 @@
             "Oligopeptides"
         ],
         "class_labels": [
-            "Ahp-containing cyclodepsipeptides",
             "Cyclic peptides",
             "Depsipeptides",
             "Lipopeptides"

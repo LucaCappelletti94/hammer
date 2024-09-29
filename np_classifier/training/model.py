@@ -90,29 +90,46 @@ class Classifier:
     def _build_input_modality(self, input_layer: Input) -> Layer:
         """Build the input modality sub-module."""
         hidden = input_layer
-        for _ in range(4):
+
+        # We determine the next power of two for the input size.
+        input_size = input_layer.shape[1]
+        input_size_power_of_two = 2 ** (input_size - 1).bit_length()
+
+        for i in range(4):
             hidden = Dense(
-                2048,
+                input_size_power_of_two,
                 activation="relu",
                 kernel_initializer=HeNormal(),
                 kernel_regularizer="l2",
+                name=f"dense_{input_layer.name}_{i}",
             )(hidden)
-            hidden = BatchNormalization()(hidden)
-            hidden = Dropout(0.5)(hidden)
+            hidden = BatchNormalization(
+                name=f"batch_normalization_{input_layer.name}_{i}"
+            )(hidden)
+            hidden = Dropout(
+                0.5,
+                name=f"dropout_{input_layer.name}_{i}",
+            )(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
         """Build the hidden layers sub-module."""
         hidden = Concatenate(axis=-1)(inputs)
-        for _ in range(8):
+        for i in range(8):
             hidden = Dense(
                 1024,
                 activation="relu",
                 kernel_initializer=HeNormal(),
                 kernel_regularizer="l2",
+                name=f"dense_hidden_{i}",
             )(hidden)
-            hidden = BatchNormalization()(hidden)
-            hidden = Dropout(0.5)(hidden)
+            hidden = BatchNormalization(
+                name=f"batch_normalization_hidden_{i}",
+            )(hidden)
+            hidden = Dropout(
+                0.5,
+                name=f"dropout_hidden_{i}",
+            )(hidden)
         return hidden
 
     def _build_pathway_head(
@@ -124,36 +141,42 @@ class Classifier:
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_pathway_0",
         )(input_layer)
         hidden = Dense(
             256,
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_pathway_1",
         )(hidden)
         hidden = Dense(
             128,
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_pathway_2",
         )(hidden)
         hidden = Dense(
             64,
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_pathway_3",
         )(hidden)
         hidden = Dense(
             32,
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_pathway_4",
         )(hidden)
         hidden = Dense(
             16,
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_pathway_5",
         )(hidden)
         output = Dense(number_of_pathways, name="pathway", activation="sigmoid")(hidden)
         return (hidden, output)
@@ -167,18 +190,21 @@ class Classifier:
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_superclass_0",
         )(input_layer)
         hidden = Dense(
             256,
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_superclass_1",
         )(hidden)
         hidden = Dense(
             128,
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_superclass_2",
         )(hidden)
         output = Dense(number_of_superclasses, name="superclass", activation="sigmoid")(
             hidden
@@ -192,12 +218,14 @@ class Classifier:
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_class_0",
         )(input_layer)
         hidden = Dense(
             768,
             activation="relu",
             kernel_initializer=HeNormal(),
             kernel_regularizer="l2",
+            name="dense_class_1",
         )(input_layer)
         output = Dense(number_of_classes, name="class", activation="sigmoid")(hidden)
         return output

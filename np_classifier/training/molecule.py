@@ -2,11 +2,29 @@
 
 from typing import List, Dict
 import numpy as np
-from rdkit.Chem import Mol # pylint: disable=no-name-in-module
-from rdkit.Chem import MolFromSmiles # pylint: disable=no-name-in-module
-from np_classifier.utils import is_glycoside
+from rdkit.Chem import Mol  # pylint: disable=no-name-in-module
+from rdkit.Chem import MolFromSmiles  # pylint: disable=no-name-in-module
+from rdkit.Chem import MolFromSmarts  # pylint: disable=no-name-in-module
+from rdkit.Chem import rdFingerprintGenerator  # pylint: disable=no-name-in-module
+from rdkit.Chem import AddHs  # pylint: disable=no-name-in-module
+from rdkit.Chem import MACCSkeys  # pylint: disable=no-name-in-module
+from rdkit.Chem import Descriptors  # pylint: disable=no-name-in-module
+from rdkit.Chem import Lipinski  # pylint: disable=no-name-in-module
+from rdkit.Chem import Crippen  # pylint: disable=no-name-in-module
+from rdkit.Chem import rdMolDescriptors # pylint: disable=no-name-in-module
+
 from np_classifier.utils.constants import PATHWAY_NAMES, SUPERCLASS_NAMES, CLASS_NAMES
-from np_classifier.utils import to_morgan_fingerprint
+
+SUGAR_SMARTS: List[str] = [
+    "[OX2;$([r5]1@C@C@C(O)@C1),$([r6]1@C@C@C(O)@C(O)@C1)]",
+    "[OX2;$([r5]1@C(!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C1),$([r6]1@C(!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C@C1)]",
+    "[OX2;$([r5]1@C(!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C(O)@C1),$([r6]1@C(!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C(O)@C(O)@C1)]",
+    "[OX2;$([r5]1@C(!@[OX2H1])@C@C@C1),$([r6]1@C(!@[OX2H1])@C@C@C@C1)]",
+    "[OX2;$([r5]1@[C@@](!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C1),$([r6]1@[C@@](!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C@C1)]",
+    "[OX2;$([r5]1@[C@](!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C1),$([r6]1@[C@](!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C@C1)]",
+]
+
+SUGARS: List[Mol] = [MolFromSmarts(sugar) for sugar in SUGAR_SMARTS]
 
 
 class Molecule:
@@ -90,7 +108,7 @@ class Molecule:
 
     def is_glycoside(self) -> bool:
         """Return whether the molecule is a glycoside."""
-        return is_glycoside(self.molecule)
+        return any(self.molecule.HasSubstructMatch(sugar) for sugar in SUGARS)
 
     def into_homologue(self, homologue: Mol) -> "Smiles":
         """Return a homologue of the molecule."""
@@ -103,12 +121,76 @@ class Molecule:
 
     def fingerprint(self, radius: int = 3, n_bits: int = 2048) -> Dict[str, np.ndarray]:
         """Return the Morgan fingerprint of the molecule."""
-        formula_fingerprint, binary_fingerprint = to_morgan_fingerprint(
-            self.molecule, radius=radius, n_bits=n_bits
+        morgan_fingerprint_generator = rdFingerprintGenerator.GetMorganGenerator(
+            radius=radius, fpSize=n_bits
         )
+        molecule_with_hydrogens = AddHs(self.molecule)
+        morgan_fingerprint = morgan_fingerprint_generator.GetFingerprintAsNumPy(
+            mol=molecule_with_hydrogens
+        )
+
+        rdkit_fingerprint_generator = rdFingerprintGenerator.GetRDKitFPGenerator()
+        rdkit_fingerprint = rdkit_fingerprint_generator.GetFingerprintAsNumPy(
+            mol=molecule_with_hydrogens
+        )
+
+        mac_keys = MACCSkeys.GenMACCSKeys(molecule_with_hydrogens)
+        mac_keys_array: np.ndarray = np.frombuffer(mac_keys.ToBitString().encode(), 'u1') - ord('0')
+
+        # Next, we compute an ensemble of molecular descriptors. Sadly, most RDKIT descriptors are
+        # very damn buggy, so we have to be very careful with them and select only the ones that
+        # are not buggy. This of course limits the number of descriptors we can use and may change
+        # in the future.
+
+        molecular_descriptors = [
+            Descriptors.MolWt(molecule_with_hydrogens),
+            Descriptors.NumValenceElectrons(molecule_with_hydrogens),
+            Descriptors.NumRadicalElectrons(molecule_with_hydrogens),
+            rdMolDescriptors.CalcTPSA(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumAromaticRings(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumAliphaticRings(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumSaturatedRings(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumHeteroatoms(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumHeterocycles(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumRotatableBonds(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumSpiroAtoms(molecule_with_hydrogens),
+            rdMolDescriptors.CalcFractionCSP3(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumRings(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumAromaticCarbocycles(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumAromaticHeterocycles(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumAliphaticCarbocycles(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumAliphaticHeterocycles(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumSaturatedCarbocycles(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumSaturatedHeterocycles(molecule_with_hydrogens),
+            rdMolDescriptors.CalcNumHeavyAtoms(molecule_with_hydrogens),
+        ]
+
+        # Crippen descriptors
+
+        molecular_descriptors.extend([
+            Crippen.MolLogP(molecule_with_hydrogens),
+            Crippen.MolMR(molecule_with_hydrogens),
+        ])
+
+        # Lipinski descriptors
+
+        molecular_descriptors.extend([
+            Lipinski.NumHDonors(molecule_with_hydrogens),
+            Lipinski.NumHAcceptors(molecule_with_hydrogens),
+            Lipinski.NumRotatableBonds(molecule_with_hydrogens),
+        ])
+
+        molecular_descriptors = np.array(molecular_descriptors, dtype=np.float32)
+
+        # We check that the descriptors are not NaN or infinite
+        assert not np.isnan(molecular_descriptors).any(), f"Found NaN: {molecular_descriptors}"
+        assert not np.isinf(molecular_descriptors).any(), f"Found INF: {molecular_descriptors}"
+
         return {
-            "binary_fingerprint": binary_fingerprint,
-            "formula_fingerprint": formula_fingerprint,
+            "morgan_fingerprint": morgan_fingerprint,
+            "rdkit_fingerprint": rdkit_fingerprint,
+            "mac_keys": mac_keys_array,
+            "descriptors": molecular_descriptors
         }
 
     def labels(self) -> Dict[str, np.ndarray]:

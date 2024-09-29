@@ -143,7 +143,7 @@ class Dataset:
 
         molecule_labels = molecules[0].labels()
         dataset = {
-            key: np.zeros((number_of_molecules, value.shape[1]), dtype=np.float32)
+            key: np.zeros((number_of_molecules, value.shape[0]), dtype=np.float32)
             for key, value in fingerprints[0].items()
         }
         labels = {

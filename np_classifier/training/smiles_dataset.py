@@ -7,8 +7,9 @@ import compress_json
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
-from rdkit.Chem import Mol # pylint: disable=no-name-in-module
+from rdkit.Chem import Mol  # pylint: disable=no-name-in-module
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
+from np_classifier.utils.constants import PATHWAY_NAMES, SUPERCLASS_NAMES, CLASS_NAMES
 from np_classifier.training.molecule import Molecule
 from np_classifier.training.augmentation_strategies import (
     generate_demethoxylated_homologues,
@@ -56,6 +57,7 @@ class Dataset:
             )
             for entry in compress_json.load(multi_label_smiles)
         ]
+
         # While it would be quite hard to stratify the dataset based on the combination
         # of pathway, superclass and class labels, we can achieve a reasonable stratification
         # by stratifying based on the first class label.
@@ -69,7 +71,9 @@ class Dataset:
         self._test_molecules: List[Molecule] = [molecules[i] for i in test_indices]
 
         # We augment the training set.
-        molecules_in_training_set: Set[Mol] = {molecules[i].molecule for i in train_indices}
+        molecules_in_training_set: Set[Mol] = {
+            molecules[i].molecule for i in train_indices
+        }
         training_molecules: List[Molecule] = [molecules[i] for i in train_indices]
         augmented_molecules: List[Molecule] = []
 
@@ -109,7 +113,9 @@ class Dataset:
                     augmented_molecules.append(molecule.into_homologue(homologue))
                     molecules_in_training_set.add(homologue)
 
-        self._training_molecules: List[Molecule] = training_molecules + augmented_molecules
+        self._training_molecules: List[Molecule] = (
+            training_molecules + augmented_molecules
+        )
         self._validation_splitter = StratifiedShuffleSplit(
             n_splits=number_of_splits,
             test_size=validation_size,
@@ -118,6 +124,30 @@ class Dataset:
         self._verbose = verbose
         self._radius = radius
         self._n_bits = n_bits
+
+    def training_pathway_counts(self) -> Dict[str, int]:
+        """Return the counts of the pathways in the training set."""
+        counts = {pathway: 0 for pathway in PATHWAY_NAMES}
+        for molecule in self._training_molecules:
+            for pathway in molecule.pathway_labels:
+                counts[PATHWAY_NAMES[pathway]] += 1
+        return counts
+    
+    def training_superclass_counts(self) -> Dict[str, int]:
+        """Return the counts of the superclasses in the training set."""
+        counts = {superclass: 0 for superclass in SUPERCLASS_NAMES}
+        for molecule in self._training_molecules:
+            for superclass in molecule.superclass_labels:
+                counts[SUPERCLASS_NAMES[superclass]] += 1
+        return counts
+
+    def training_class_counts(self) -> Dict[str, int]:
+        """Return the counts of the classes in the training set."""
+        counts = {class_: 0 for class_ in CLASS_NAMES}
+        for molecule in self._training_molecules:
+            for class_ in molecule.class_labels:
+                counts[CLASS_NAMES[class_]] += 1
+        return counts
 
     def to_dataset(
         self, molecules: List[Molecule]
@@ -130,7 +160,10 @@ class Dataset:
                 tqdm(
                     pool.imap(
                         _get_fingerprints,
-                        ((molecule, self._radius, self._n_bits) for molecule in molecules),
+                        (
+                            (molecule, self._radius, self._n_bits)
+                            for molecule in molecules
+                        ),
                     ),
                     desc="Generating fingerprints",
                     leave=False,
@@ -190,9 +223,7 @@ class Dataset:
             unit="split",
         ):
             yield (
-                self.to_dataset(
-                    [self._training_molecules[i] for i in train_indices]
-                ),
+                self.to_dataset([self._training_molecules[i] for i in train_indices]),
                 self.to_dataset(
                     [self._training_molecules[i] for i in validation_indices]
                 ),

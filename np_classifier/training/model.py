@@ -115,9 +115,9 @@ class Classifier:
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
         """Build the hidden layers sub-module."""
         hidden = Concatenate(axis=-1)(inputs)
-        for i in range(8):
+        for i in range(10):
             hidden = Dense(
-                1024,
+                2048,
                 activation="relu",
                 kernel_initializer=HeNormal(),
                 kernel_regularizer="l2",
@@ -134,101 +134,21 @@ class Classifier:
 
     def _build_pathway_head(
         self, input_layer: Layer, number_of_pathways: int
-    ) -> (Layer, Layer):
+    ) -> Layer:
         """Build the output head sub-module."""
-        hidden = Dense(
-            512,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_pathway_0",
-        )(input_layer)
-        hidden = Dense(
-            256,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_pathway_1",
-        )(hidden)
-        hidden = Dense(
-            128,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_pathway_2",
-        )(hidden)
-        hidden = Dense(
-            64,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_pathway_3",
-        )(hidden)
-        hidden = Dense(
-            32,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_pathway_4",
-        )(hidden)
-        hidden = Dense(
-            16,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_pathway_5",
-        )(hidden)
-        output = Dense(number_of_pathways, name="pathway", activation="sigmoid")(hidden)
-        return (hidden, output)
+        return Dense(number_of_pathways, name="pathway", activation="sigmoid")(input_layer)
 
     def _build_superclass_head(
         self, input_layer: Layer, number_of_superclasses: int
-    ) -> (Layer, Layer):
+    ) -> Layer:
         """Build the output head sub-module."""
-        hidden = Dense(
-            512,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_superclass_0",
-        )(input_layer)
-        hidden = Dense(
-            256,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_superclass_1",
-        )(hidden)
-        hidden = Dense(
-            128,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_superclass_2",
-        )(hidden)
-        output = Dense(number_of_superclasses, name="superclass", activation="sigmoid")(
-            hidden
+        return Dense(number_of_superclasses, name="superclass", activation="sigmoid")(
+            input_layer
         )
-        return (hidden, output)
 
     def _build_class_head(self, input_layer: Layer, number_of_classes: int) -> Layer:
         """Build the output head sub-module."""
-        hidden = Dense(
-            1024,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_class_0",
-        )(input_layer)
-        hidden = Dense(
-            768,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            kernel_regularizer="l2",
-            name="dense_class_1",
-        )(input_layer)
-        output = Dense(number_of_classes, name="class", activation="sigmoid")(hidden)
-        return output
+        return Dense(number_of_classes, name="class", activation="sigmoid")(input_layer)
 
     def _build(self, inputs: Dict[str, np.ndarray], outputs: Dict[str, np.ndarray]):
         """Build the classifier model."""
@@ -243,23 +163,13 @@ class Classifier:
 
         hidden: Layer = self._build_hidden_layers(input_modalities)
 
-        pathway_hidden, pathway_head = self._build_pathway_head(
+        pathway_head = self._build_pathway_head(
             hidden, outputs["pathway"].shape[1]
         )
-        concatenated_pathway = Concatenate(
-            axis=-1,
-            name="concatenated_pathway",
-        )([hidden, pathway_hidden])
-        superclass_hidden, superclass_head = self._build_superclass_head(
-            concatenated_pathway, outputs["superclass"].shape[1]
+        superclass_head = self._build_superclass_head(
+            hidden, outputs["superclass"].shape[1]
         )
-        concatenated_pathway_and_superclass = Concatenate(
-            axis=-1,
-            name="concatenated_pathway_and_superclass",
-        )([concatenated_pathway, superclass_hidden])
-        class_head = self._build_class_head(
-            concatenated_pathway_and_superclass, outputs["class"].shape[1]
-        )
+        class_head = self._build_class_head(hidden, outputs["class"].shape[1])
 
         self._model = Model(
             inputs={input_layer.name: input_layer for input_layer in input_layers},
@@ -280,8 +190,8 @@ class Classifier:
         """Train the classifier model."""
         self._build(*train)
         self._model.compile(
-            optimizer=Adam(),
-            loss="binary_crossentropy",
+            optimizer=Adam(clipnorm=1.0),
+            loss="binary_focal_crossentropy",
             metrics={
                 "pathway": get_standard_binary_metrics(),
                 "superclass": get_standard_binary_metrics(),
@@ -341,14 +251,14 @@ class Classifier:
                 TqdmCallback(
                     verbose=1,
                     metrics=[
+                        "loss",
+                        "val_loss",
                         "class_mcc",
                         "val_class_mcc",
-                        "class_loss",
-                        "val_class_loss",
-                        "superclass_loss",
-                        "val_superclass_loss",
-                        "pathway_loss",
-                        "val_pathway_loss",
+                        "superclass_mcc",
+                        "val_superclass_mcc",
+                        "pathway_mcc",
+                        "val_pathway_mcc",
                     ],
                 ),
                 model_checkpoint,
@@ -356,7 +266,7 @@ class Classifier:
                 early_stopping,
                 learning_rate_scheduler,
             ],
-            batch_size=4096,
+            batch_size=512,
             shuffle=True,
             verbose=0,
             validation_data=val,

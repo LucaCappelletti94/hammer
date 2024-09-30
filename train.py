@@ -9,6 +9,7 @@ from np_classifier.training import Trainer, Dataset
 def train():
     """Train the model."""
     dataset = Dataset()
+
     trainer = Trainer(dataset)
 
     performance: pd.DataFrame = trainer.holdouts()

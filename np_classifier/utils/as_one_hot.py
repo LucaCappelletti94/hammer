@@ -1,6 +1,8 @@
 """Submodule providing utility to convert a list of indices to a one-hot numpy array."""
+
 from typing import List
 import numpy as np
+
 
 def as_one_hot(indices: List[int], size: int) -> np.ndarray:
     """Converts a list of indices to a one-hot numpy array.

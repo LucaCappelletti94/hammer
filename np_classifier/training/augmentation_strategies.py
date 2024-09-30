@@ -8,6 +8,7 @@ from rdkit.Chem import AddHs  # pylint: disable=no-name-in-module
 from rdkit.Chem import RemoveHs  # pylint: disable=no-name-in-module
 from rdkit.Chem import SanitizeMol  # pylint: disable=no-name-in-module
 
+
 def get_hydroxyl_groups_candidates(molecule: Mol) -> List[Atom]:
     """Returns a list of hydroxyl groups candidates in the molecule.
 

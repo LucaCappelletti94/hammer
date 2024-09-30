@@ -44,7 +44,7 @@ loss.
 
 """
 
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Union
 from tensorflow.keras.models import (  # pylint: disable=no-name-in-module,import-error
     Model,  # pylint: disable=no-name-in-module,import-error
 )
@@ -58,6 +58,9 @@ from tensorflow.keras.layers import (  # pylint: disable=no-name-in-module,impor
 )
 from tensorflow.keras.utils import (  # pylint: disable=no-name-in-module,import-error
     plot_model,  # pylint: disable=no-name-in-module,import-error
+)
+from tensorflow.keras.regularizers import (  # pylint: disable=no-name-in-module,import-error
+    L2,  # pylint: disable=no-name-in-module,import-error
 )
 from tensorflow.keras.callbacks import (  # pylint: disable=no-name-in-module,import-error
     ModelCheckpoint,  # pylint: disable=no-name-in-module,import-error
@@ -91,23 +94,23 @@ class Classifier:
         """Build the input modality sub-module."""
         hidden = input_layer
 
-        # We determine the next power of two for the input size.
-        input_size = input_layer.shape[1]
-        input_size_power_of_two = 2 ** (input_size - 1).bit_length()
+        if input_layer.shape[1] == 2048:
+            hidden_sizes = 512
+        else:
+            hidden_sizes = 64
 
-        for i in range(4):
+        for i in range(5):
             hidden = Dense(
-                input_size_power_of_two,
+                hidden_sizes,
                 activation="relu",
                 kernel_initializer=HeNormal(),
-                kernel_regularizer="l2",
                 name=f"dense_{input_layer.name}_{i}",
             )(hidden)
             hidden = BatchNormalization(
                 name=f"batch_normalization_{input_layer.name}_{i}"
             )(hidden)
             hidden = Dropout(
-                0.5,
+                0.3,
                 name=f"dropout_{input_layer.name}_{i}",
             )(hidden)
         return hidden
@@ -120,23 +123,22 @@ class Classifier:
                 2048,
                 activation="relu",
                 kernel_initializer=HeNormal(),
-                kernel_regularizer="l2",
                 name=f"dense_hidden_{i}",
             )(hidden)
             hidden = BatchNormalization(
                 name=f"batch_normalization_hidden_{i}",
             )(hidden)
             hidden = Dropout(
-                0.5,
+                0.4,
                 name=f"dropout_hidden_{i}",
             )(hidden)
         return hidden
 
-    def _build_pathway_head(
-        self, input_layer: Layer, number_of_pathways: int
-    ) -> Layer:
+    def _build_pathway_head(self, input_layer: Layer, number_of_pathways: int) -> Layer:
         """Build the output head sub-module."""
-        return Dense(number_of_pathways, name="pathway", activation="sigmoid")(input_layer)
+        return Dense(number_of_pathways, name="pathway", activation="sigmoid")(
+            input_layer
+        )
 
     def _build_superclass_head(
         self, input_layer: Layer, number_of_superclasses: int
@@ -150,11 +152,21 @@ class Classifier:
         """Build the output head sub-module."""
         return Dense(number_of_classes, name="class", activation="sigmoid")(input_layer)
 
-    def _build(self, inputs: Dict[str, np.ndarray], outputs: Dict[str, np.ndarray]):
+    def _build(
+        self,
+        inputs: Dict[str, np.ndarray],
+        outputs: Dict[str, np.ndarray],
+    ):
         """Build the classifier model."""
+        # Validate the input types.
+        assert isinstance(inputs, dict)
+        assert isinstance(outputs, dict)
+        assert all(isinstance(value, np.ndarray) for value in inputs.values())
+        assert all(isinstance(value, np.ndarray) for value in outputs.values())
+
         input_layers: List[Input] = [
-            Input(shape=(input_tensor.shape[1],), name=name)
-            for name, input_tensor in inputs.items()
+            Input(shape=input_layer.shape[1:], name=name)
+            for name, input_layer in inputs.items()
         ]
 
         input_modalities: List[Layer] = [
@@ -163,9 +175,7 @@ class Classifier:
 
         hidden: Layer = self._build_hidden_layers(input_modalities)
 
-        pathway_head = self._build_pathway_head(
-            hidden, outputs["pathway"].shape[1]
-        )
+        pathway_head = self._build_pathway_head(hidden, outputs["pathway"].shape[1])
         superclass_head = self._build_superclass_head(
             hidden, outputs["superclass"].shape[1]
         )
@@ -273,16 +283,14 @@ class Classifier:
         )
         self._history = pd.DataFrame(training_history.history)
 
+        fig, _ = plot_history(self._history)
+
         if holdout_number is not None:
             self._history.to_csv(f"history_{holdout_number}.csv")
+            fig.savefig(f"history_{holdout_number}.png")
         else:
             self._history.to_csv("history.csv")
-
-    def plot_training_history(self):
-        """Plot the training history."""
-        if self._history is None:
-            raise ValueError("No training history available.")
-        plot_history(self._history)
+            fig.savefig("history.png")
 
     def evaluate(
         self, test: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]

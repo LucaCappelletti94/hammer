@@ -22,7 +22,7 @@ class Trainer:
         self,
     ) -> pd.DataFrame:
         """Train the classifier."""
-        test = self._smiles_dataset.test()
+        _train, test = self._smiles_dataset.primary_split()
         all_performance = []
         for holdout_number, (sub_train, valid) in enumerate(
             self._smiles_dataset.train_split()

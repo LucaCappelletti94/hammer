@@ -163,3 +163,13 @@ cython_debug/
 
 *.keras
 history_*.csv
+descriptors.csv
+morgan_fingerprint.csv
+rdkit_fingerprint.csv
+mac_keys.csv
+maccs_fingerprint.csv
+dot.txt
+atom_pair_fingerprint.csv
+feature_morgan_fingerprint.csv
+topological_torsion_fingerprint.csv
+avalon_fingerprint.csv

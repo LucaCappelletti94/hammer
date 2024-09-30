@@ -2,16 +2,19 @@
 
 from typing import List, Dict
 import numpy as np
+import pandas as pd
 from rdkit.Chem import Mol  # pylint: disable=no-name-in-module
 from rdkit.Chem import MolFromSmiles  # pylint: disable=no-name-in-module
 from rdkit.Chem import MolFromSmarts  # pylint: disable=no-name-in-module
 from rdkit.Chem import rdFingerprintGenerator  # pylint: disable=no-name-in-module
 from rdkit.Chem import AddHs  # pylint: disable=no-name-in-module
 from rdkit.Chem import MACCSkeys  # pylint: disable=no-name-in-module
+from rdkit.Avalon import pyAvalonTools  # pylint: disable=no-name-in-module
 from rdkit.Chem import Descriptors  # pylint: disable=no-name-in-module
 from rdkit.Chem import Lipinski  # pylint: disable=no-name-in-module
 from rdkit.Chem import Crippen  # pylint: disable=no-name-in-module
-from rdkit.Chem import rdMolDescriptors # pylint: disable=no-name-in-module
+from rdkit.Chem import rdMolDescriptors  # pylint: disable=no-name-in-module
+from rdkit.Chem import GraphDescriptors  # pylint: disable=no-name-in-module
 
 from np_classifier.utils.constants import PATHWAY_NAMES, SUPERCLASS_NAMES, CLASS_NAMES
 
@@ -101,10 +104,38 @@ class Molecule:
         one_hot[self.class_labels] = 1
         return one_hot
 
-    @property
-    def first_class_label(self) -> int:
-        """Return the first class label."""
-        return self.class_labels[0]
+    def most_common_class_label(self, count: Dict[str, int]) -> int:
+        """Return the most common class label."""
+        assert isinstance(count, dict)
+        return max(self.class_labels, key=lambda label: count[CLASS_NAMES[label]])
+
+    def most_common_class_label_name(self, count: Dict[str, int]) -> str:
+        """Return the name of the most common class label."""
+        return CLASS_NAMES[self.most_common_class_label(count)]
+
+    def most_common_pathway_label(self, count: Dict[str, int]) -> int:
+        """Return the most common pathway label."""
+        assert isinstance(count, dict)
+        return max(self.pathway_labels, key=lambda label: count[PATHWAY_NAMES[label]])
+
+    def most_common_pathway_label_name(self, count: Dict[str, int]) -> str:
+        """Return the name of the most common pathway label."""
+        return PATHWAY_NAMES[self.most_common_pathway_label(count)]
+
+    def most_common_superclass_label(self, count: Dict[str, int]) -> int:
+        """Return the most common superclass label."""
+        assert isinstance(count, dict)
+        return max(
+            self.superclass_labels, key=lambda label: count[SUPERCLASS_NAMES[label]]
+        )
+
+    def most_common_superclass_label_name(self, count: Dict[str, int]) -> str:
+        """Return the name of the most common superclass label."""
+        return SUPERCLASS_NAMES[self.most_common_superclass_label(count)]
+
+    def least_common_class_label(self, count: Dict[str, int]) -> int:
+        """Return the least common class label."""
+        return min(self.class_labels, key=lambda label: count[CLASS_NAMES[label]])
 
     def is_glycoside(self) -> bool:
         """Return whether the molecule is a glycoside."""
@@ -119,8 +150,16 @@ class Molecule:
             class_labels=self.class_labels,
         )
 
-    def fingerprint(self, radius: int = 3, n_bits: int = 2048) -> Dict[str, np.ndarray]:
-        """Return the Morgan fingerprint of the molecule."""
+    def features(self, radius: int = 3, n_bits: int = 2048) -> Dict[str, np.ndarray]:
+        """Return a complete set of fingerprints and descriptors.
+
+        Parameters
+        ----------
+        radius : int
+            The radius of the Morgan fingerprint.
+        n_bits : int
+            The number of bits of the fingerprints.
+        """
         morgan_fingerprint_generator = rdFingerprintGenerator.GetMorganGenerator(
             radius=radius, fpSize=n_bits
         )
@@ -129,13 +168,50 @@ class Molecule:
             mol=molecule_with_hydrogens
         )
 
-        rdkit_fingerprint_generator = rdFingerprintGenerator.GetRDKitFPGenerator()
+        rdkit_fingerprint_generator = rdFingerprintGenerator.GetRDKitFPGenerator(
+            fpSize=n_bits
+        )
         rdkit_fingerprint = rdkit_fingerprint_generator.GetFingerprintAsNumPy(
             mol=molecule_with_hydrogens
         )
 
-        mac_keys = MACCSkeys.GenMACCSKeys(molecule_with_hydrogens)
-        mac_keys_array: np.ndarray = np.frombuffer(mac_keys.ToBitString().encode(), 'u1') - ord('0')
+        atom_pair_fingerprint_generator = rdFingerprintGenerator.GetAtomPairGenerator(
+            fpSize=n_bits
+        )
+        atom_pair_fingerprint = atom_pair_fingerprint_generator.GetFingerprintAsNumPy(
+            mol=molecule_with_hydrogens
+        )
+
+        topological_torsion_fingerprint_generator = (
+            rdFingerprintGenerator.GetTopologicalTorsionGenerator(fpSize=n_bits)
+        )
+        topological_torsion_fingerprint = (
+            topological_torsion_fingerprint_generator.GetFingerprintAsNumPy(
+                mol=molecule_with_hydrogens
+            )
+        )
+
+        feature_morgan_fingerprint_generator = rdFingerprintGenerator.GetMorganGenerator(
+            radius=radius,
+            fpSize=n_bits,
+            atomInvariantsGenerator=rdFingerprintGenerator.GetMorganFeatureAtomInvGen(),
+        )
+        feature_morgan_fingerprint = (
+            feature_morgan_fingerprint_generator.GetFingerprintAsNumPy(
+                mol=molecule_with_hydrogens
+            )
+        )
+
+        # We proceed generating the Avalon fingerprints
+        avalon_fingerprint: "ExplicitBitVect" = pyAvalonTools.GetAvalonFP(molecule_with_hydrogens, nBits=n_bits)
+        avalon_fingerprint_array = np.frombuffer(
+            avalon_fingerprint.ToBitString().encode(), "u1"
+        ) - ord("0")
+
+        maccs_fingerprint: "ExplicitBitVect" = MACCSkeys.GenMACCSKeys(molecule_with_hydrogens)
+        maccs_fingerprint_array: np.ndarray = np.frombuffer(
+            maccs_fingerprint.ToBitString().encode(), "u1"
+        ) - ord("0")
 
         # Next, we compute an ensemble of molecular descriptors. Sadly, most RDKIT descriptors are
         # very damn buggy, so we have to be very careful with them and select only the ones that
@@ -165,33 +241,90 @@ class Molecule:
             rdMolDescriptors.CalcNumHeavyAtoms(molecule_with_hydrogens),
         ]
 
+        # Graph descriptors
+        molecular_descriptors.extend(
+            [
+                GraphDescriptors.BalabanJ(molecule_with_hydrogens),
+                GraphDescriptors.BertzCT(molecule_with_hydrogens),
+            ]
+        )
+
         # Crippen descriptors
 
-        molecular_descriptors.extend([
-            Crippen.MolLogP(molecule_with_hydrogens),
-            Crippen.MolMR(molecule_with_hydrogens),
-        ])
+        molecular_descriptors.extend(
+            [
+                Crippen.MolLogP(molecule_with_hydrogens),
+                Crippen.MolMR(molecule_with_hydrogens),
+            ]
+        )
 
         # Lipinski descriptors
 
-        molecular_descriptors.extend([
-            Lipinski.NumHDonors(molecule_with_hydrogens),
-            Lipinski.NumHAcceptors(molecule_with_hydrogens),
-            Lipinski.NumRotatableBonds(molecule_with_hydrogens),
-        ])
+        molecular_descriptors.extend(
+            [
+                Lipinski.NumHDonors(molecule_with_hydrogens),
+                Lipinski.NumHAcceptors(molecule_with_hydrogens),
+                Lipinski.NumRotatableBonds(molecule_with_hydrogens),
+            ]
+        )
 
         molecular_descriptors = np.array(molecular_descriptors, dtype=np.float32)
 
+        assert molecular_descriptors.size == len(
+            Molecule.descriptor_names()
+        ), f"Expected {len(Molecule.descriptor_names())}, got {molecular_descriptors.size}"
+
         # We check that the descriptors are not NaN or infinite
-        assert not np.isnan(molecular_descriptors).any(), f"Found NaN: {molecular_descriptors}"
-        assert not np.isinf(molecular_descriptors).any(), f"Found INF: {molecular_descriptors}"
+        assert not np.isnan(
+            molecular_descriptors
+        ).any(), f"Found NaN: {molecular_descriptors}"
+        assert not np.isinf(
+            molecular_descriptors
+        ).any(), f"Found INF: {molecular_descriptors}"
 
         return {
             "morgan_fingerprint": morgan_fingerprint,
             "rdkit_fingerprint": rdkit_fingerprint,
-            "mac_keys": mac_keys_array,
-            "descriptors": molecular_descriptors
+            "atom_pair_fingerprint": atom_pair_fingerprint,
+            "topological_torsion_fingerprint": topological_torsion_fingerprint,
+            "feature_morgan_fingerprint": feature_morgan_fingerprint,
+            "avalon_fingerprint": avalon_fingerprint_array,
+            "maccs_fingerprint": maccs_fingerprint_array,
+            "descriptors": molecular_descriptors,
         }
+    
+    @staticmethod
+    def descriptor_names() -> List[str]:
+        """Return the names of the descriptors."""
+        return [
+            "MolWt",
+            "NumValenceElectrons",
+            "NumRadicalElectrons",
+            "TPSA",
+            "NumAromaticRings",
+            "NumAliphaticRings",
+            "NumSaturatedRings",
+            "NumHeteroatoms",
+            "NumHeterocycles",
+            "NumRotatableBonds",
+            "NumSpiroAtoms",
+            "FractionCSP3",
+            "NumRings",
+            "NumAromaticCarbocycles",
+            "NumAromaticHeterocycles",
+            "NumAliphaticCarbocycles",
+            "NumAliphaticHeterocycles",
+            "NumSaturatedCarbocycles",
+            "NumSaturatedHeterocycles",
+            "NumHeavyAtoms",
+            "BalabanJ",
+            "BertzCT",
+            "MolLogP",
+            "MolMR",
+            "NumHDonors",
+            "NumHAcceptors",
+            "NumRotatableBonds",
+        ]
 
     def labels(self) -> Dict[str, np.ndarray]:
         """Return the labels."""

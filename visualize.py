@@ -1,6 +1,7 @@
 """Executor to visualize the features."""
 
 import silence_tensorflow.auto  # pylint: disable=unused-import
+import os
 import pandas as pd
 import numpy as np
 import compress_json
@@ -148,7 +149,9 @@ def visualize():
             ax[i].legend(handles, labels, loc="upper right")
 
         plt.tight_layout()
-        plt.savefig(f"{feature_set_name}.png")
+
+        os.makedirs("data_visualizations", exist_ok=True)
+        plt.savefig(f"data_visualizations/{feature_set_name}.png")
         plt.close()
 
 

@@ -45,6 +45,7 @@ loss.
 """
 
 from typing import Dict, Optional, Tuple, List, Union
+import os
 from tensorflow.keras.models import (  # pylint: disable=no-name-in-module,import-error
     Model,  # pylint: disable=no-name-in-module,import-error
 )
@@ -95,9 +96,9 @@ class Classifier:
         hidden = input_layer
 
         if input_layer.shape[1] == 2048:
-            hidden_sizes = 512
+            hidden_sizes = 768
         else:
-            hidden_sizes = 64
+            hidden_sizes = 128
 
         for i in range(5):
             hidden = Dense(
@@ -118,7 +119,21 @@ class Classifier:
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
         """Build the hidden layers sub-module."""
         hidden = Concatenate(axis=-1)(inputs)
-        for i in range(10):
+        for i in range(5):
+            hidden = Dense(
+                4096,
+                activation="relu",
+                kernel_initializer=HeNormal(),
+                name=f"dense_hidden_{i}",
+            )(hidden)
+            hidden = BatchNormalization(
+                name=f"batch_normalization_hidden_{i}",
+            )(hidden)
+            hidden = Dropout(
+                0.5,
+                name=f"dropout_hidden_{i}",
+            )(hidden)
+        for i in range(5, 10):
             hidden = Dense(
                 2048,
                 activation="relu",
@@ -129,7 +144,7 @@ class Classifier:
                 name=f"batch_normalization_hidden_{i}",
             )(hidden)
             hidden = Dropout(
-                0.4,
+                0.5,
                 name=f"dropout_hidden_{i}",
             )(hidden)
         return hidden
@@ -201,7 +216,7 @@ class Classifier:
         self._build(*train)
         self._model.compile(
             optimizer=Adam(clipnorm=1.0),
-            loss="binary_focal_crossentropy",
+            loss="binary_crossentropy",
             metrics={
                 "pathway": get_standard_binary_metrics(),
                 "superclass": get_standard_binary_metrics(),
@@ -227,7 +242,7 @@ class Classifier:
 
         model_checkpoint = ModelCheckpoint(
             model_checkpoint_path,
-            monitor="val_loss",
+            monitor="val_class_mcc",
             save_best_only=True,
             save_weights_only=False,
             mode="auto",
@@ -236,21 +251,21 @@ class Classifier:
         )
 
         learning_rate_scheduler = ReduceLROnPlateau(
-            monitor="val_loss",  # Monitor the validation loss to avoid overfitting.
+            monitor="val_class_mcc",  # Monitor the validation loss to avoid overfitting.
             factor=0.8,  # Reduce the learning rate by a small factor (e.g., 20%) to prevent abrupt drops.
             patience=100,  # Wait for 20 epochs without improvement before reducing LR (long patience to allow grokking).
             verbose=1,  # Verbose output for logging learning rate reductions.
-            mode="min",  # Minimize the validation loss.
+            mode="max",  # Minimize the validation loss.
             min_delta=1e-4,  # Small change threshold for improvement, encouraging gradual learning.
             cooldown=150,  # After a learning rate reduction, wait 10 epochs before resuming normal operation.
             min_lr=1e-6,  # Set a minimum learning rate to avoid reducing it too much and stalling learning.
         )
 
         early_stopping = EarlyStopping(
-            monitor="val_loss",
+            monitor="val_class_mcc",
             patience=1000,
             verbose=1,
-            mode="min",
+            mode="max",
             restore_best_weights=True,
         )
 
@@ -283,14 +298,19 @@ class Classifier:
         )
         self._history = pd.DataFrame(training_history.history)
 
-        fig, _ = plot_history(self._history)
+        fig, _ = plot_history(
+            self._history, monitor="val_class_mcc", monitor_mode="max"
+        )
+
+        # We create a directory 'histories' if it does not exist.
+        os.makedirs("histories", exist_ok=True)
 
         if holdout_number is not None:
-            self._history.to_csv(f"history_{holdout_number}.csv")
-            fig.savefig(f"history_{holdout_number}.png")
+            self._history.to_csv(f"histories/history_{holdout_number}.csv")
+            fig.savefig(f"histories/history_{holdout_number}.png")
         else:
-            self._history.to_csv("history.csv")
-            fig.savefig("history.png")
+            self._history.to_csv("histories/history.csv")
+            fig.savefig("histories/history.png")
 
     def evaluate(
         self, test: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]

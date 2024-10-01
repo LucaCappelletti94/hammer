@@ -1,6 +1,7 @@
 """Script to generate the train features and store them to a CSV file."""
 
 from typing import Dict
+import os
 import pandas as pd
 from tqdm.auto import tqdm
 from np_classifier.training import Dataset
@@ -21,9 +22,12 @@ def train_features_to_csv():
     ):
 
         head = feature.head()
-        head.to_csv(f"{feature_name}_head.csv", index=False)
 
-        feature.to_csv(f"{feature_name}.csv", index=False)
+        os.makedirs("data_preview", exist_ok=True)
+
+        head.to_csv(f"data_preview/{feature_name}_head.csv", index=False)
+
+        feature.to_csv(f"data_preview/{feature_name}.csv", index=False)
 
 
 if __name__ == "__main__":

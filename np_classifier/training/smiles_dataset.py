@@ -330,6 +330,21 @@ class Dataset:
             StereoisomersAugmentationStrategy(),
         ]
 
+    @property
+    def pathway_names(self) -> List[str]:
+        """Return the pathway names."""
+        return self._pathway_names
+
+    @property
+    def superclass_names(self) -> List[str]:
+        """Return the superclass names."""
+        return self._superclass_names
+
+    @property
+    def class_names(self) -> List[str]:
+        """Return the class names."""
+        return self._class_names
+
     def augment_smiles(self, smiles: List[str]) -> List[List[str]]:
         """Returns the molecules augmented using the augmentation strategies."""
         augmented_smiles: Optional[List[List[str]]] = None
@@ -471,6 +486,47 @@ class Dataset:
 
         return (scalers, (features, labels))
 
+    def primary_split(self, augment: bool = True) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+        """Split the dataset into training and test sets."""
+        if augment:
+            training_smiles: List[str] = [
+                self._smiles[i] for i in self._train_indices
+            ]
+            augmented_training_smile: List[List[str]] = self.augment_smiles(
+                training_smiles
+            )
+            training_molecules: List[str] = training_smiles + [
+                smile for smiles in augmented_training_smile for smile in smiles
+            ]
+            original_label_indices: List[int] = [
+                self._train_indices[i] for i in range(len(training_smiles))
+            ]
+            augmented_label_indices: List[int] = [
+                self._train_indices[i]
+                for i, augmented in zip(range(len(training_smiles)), augmented_training_smile)
+                for _ in range(len(augmented))
+            ]
+            training_label_indices: List[int] = (
+                original_label_indices + augmented_label_indices
+            )
+        else:
+            training_molecules: List[str] = [
+                self._smiles[i] for i in self._train_indices
+            ]
+            training_label_indices: List[int] = [
+                self._train_indices[i] for i in range(len(training_molecules))
+            ]
+        scalers, training_dataset = self.to_dataset(
+            training_molecules, training_label_indices
+        )
+
+        _scalers, test_dataset = self.to_dataset(
+            [self._smiles[i] for i in self._test_indices],
+            [i for i in self._test_indices],
+            scalers=scalers,
+        )
+        return (training_dataset, test_dataset)
+
     def train_split(
         self,
         augment: bool = True,
@@ -528,6 +584,9 @@ class Dataset:
                 augmented_training_smile: List[List[str]] = self.augment_smiles(
                     training_smiles
                 )
+
+                assert len(augmented_training_smile) == len(training_smiles)
+
                 training_molecules: List[str] = training_smiles + [
                     smile for smiles in augmented_training_smile for smile in smiles
                 ]
@@ -536,8 +595,8 @@ class Dataset:
                 ]
                 augmented_label_indices: List[int] = [
                     self._train_indices[i]
-                    for i in train_indices
-                    for _ in range(len(augmented_training_smile[i]))
+                    for i, augmented in zip(train_indices, augmented_training_smile)
+                    for _ in range(len(augmented))
                 ]
                 training_label_indices: List[int] = (
                     original_label_indices + augmented_label_indices

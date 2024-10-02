@@ -46,7 +46,9 @@ class StereoisomersAugmentationStrategy(AugmentationStrategy):
                 )
             ]
 
-            assert smiles not in augmented_smiles
+            # Ensure the original SMILES is not in the list of augmented SMILES
+            if smiles in augmented_smiles:
+                augmented_smiles.remove(smiles)
 
             return augmented_smiles
         except RuntimeError as _runtime_error:

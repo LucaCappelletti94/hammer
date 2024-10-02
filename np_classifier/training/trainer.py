@@ -1,9 +1,10 @@
 """Submodule handling the training of the multi-modal multi-class classifier."""
 
-from np_classifier.training.smiles_dataset import Dataset
-from np_classifier.training.model import Classifier
 import tensorflow as tf
 import pandas as pd
+import compress_json
+from np_classifier.training.smiles_dataset import Dataset
+from np_classifier.training.model import Classifier
 
 
 class Trainer:
@@ -45,5 +46,9 @@ class Trainer:
                         "holdout": holdout_number,
                         "subset": subset,
                     }
+                )
+                compress_json.dump(
+                    all_performance,
+                    "current_performance.json",
                 )
         return pd.DataFrame(all_performance)

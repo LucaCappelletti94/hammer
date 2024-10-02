@@ -6,6 +6,6 @@ from np_classifier.training import Trainer, Dataset
 
 def test_train():
     """Train the model."""
-    dataset = Dataset(number_of_splits=2)
+    dataset = Dataset(number_of_splits=2, maximal_number_of_molecules=2000)
     trainer = Trainer(dataset, number_of_epochs=3)
     _holdout_performance = trainer.holdouts()

@@ -1,20 +1,20 @@
 """Submodule providing a class handling the SMILES dataset for training."""
 
-from typing import List, Iterator, Tuple, Dict, Set, Optional, Union
+from typing import List, Iterator, Tuple, Dict, Set, Optional, Type
 import os
 from multiprocessing import Pool
 import compress_json
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
-from rdkit.Chem import Mol  # pylint: disable=no-name-in-module
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
 from sklearn.preprocessing import RobustScaler
 from np_classifier.utils.constants import PATHWAY_NAMES, SUPERCLASS_NAMES, CLASS_NAMES
 from np_classifier.training.molecule import Molecule
 from np_classifier.training.augmentation_strategies import (
-    generate_demethoxylated_homologues,
-    generate_methoxylated_homologues,
+    StereoisomersAugmentationStrategy,
+    TautomersAugmentationStrategy,
+    AugmentationStrategy,
 )
 
 
@@ -35,6 +35,7 @@ class Dataset:
         test_size: float = 0.2,
         radius: int = 3,
         n_bits: int = 2048,
+        maximal_number_of_molecules: Optional[int] = None,
         verbose: bool = True,
     ):
         """Initialize the SMILES dataset.
@@ -53,6 +54,10 @@ class Dataset:
             The radius of the fingerprint.
         n_bits : int
             The number of bits in the fingerprint.
+        maximal_number_of_molecules : Optional[int]
+            The maximal number of molecules to use.
+            This is primarily used for testing.
+            By default, all the molecules are used.
         verbose : bool
             Whether to display progress bars.
         """
@@ -77,11 +82,24 @@ class Dataset:
             for entry in compress_json.load(multi_label_smiles)
         ]
 
+        if maximal_number_of_molecules is not None:
+            molecules = molecules[:maximal_number_of_molecules]
+
         # We determine a count of all the class labels in the dataset.
         class_counts = {class_: 0 for class_ in CLASS_NAMES}
         for molecule in molecules:
             for class_ in molecule.class_labels:
                 class_counts[CLASS_NAMES[class_]] += 1
+
+        if maximal_number_of_molecules is not None:
+            molecules = [
+                molecule
+                for molecule in molecules
+                if all(
+                    class_counts[class_label] > 1
+                    for class_label in molecule.class_label_names
+                )
+            ]
 
         # While it would be quite hard to stratify the dataset based on the combination
         # of pathway, superclass and class labels, we can achieve a reasonable stratification
@@ -97,61 +115,55 @@ class Dataset:
         )
 
         self._test_molecules: List[Molecule] = [molecules[i] for i in test_indices]
+        self._training_molecules: List[Molecule] = [molecules[i] for i in train_indices]
 
-        # We augment the training set.
-        molecules_in_training_set: Set[Mol] = {
-            molecules[i].molecule for i in train_indices
-        }
-        training_molecules: List[Molecule] = [molecules[i] for i in train_indices]
-        augmented_molecules: List[Molecule] = []
-
-        with Pool() as pool:
-            demethoxylated_homologues: List[List[Mol]] = list(
-                tqdm(
-                    pool.imap(
-                        generate_demethoxylated_homologues,
-                        (molecule.molecule for molecule in training_molecules),
-                    ),
-                    desc="Generating demethoxylated homologues",
-                    leave=False,
-                    dynamic_ncols=True,
-                    disable=not verbose,
-                    total=len(training_molecules),
-                    unit="molecule",
-                )
-            )
-            methoxylated_homologues: List[List[Mol]] = list(
-                tqdm(
-                    pool.imap(
-                        generate_methoxylated_homologues,
-                        (molecule.molecule for molecule in training_molecules),
-                    ),
-                    desc="Generating methoxylated homologues",
-                    leave=False,
-                    dynamic_ncols=True,
-                    disable=not verbose,
-                    total=len(training_molecules),
-                    unit="molecule",
-                )
-            )
-
-        for i, molecule in enumerate(training_molecules):
-            for homologue in demethoxylated_homologues[i] + methoxylated_homologues[i]:
-                if homologue not in molecules_in_training_set:
-                    augmented_molecules.append(molecule.into_homologue(homologue))
-                    molecules_in_training_set.add(homologue)
-
-        self._training_molecules: List[Molecule] = (
-            training_molecules + augmented_molecules
-        )
         self._validation_splitter = StratifiedShuffleSplit(
             n_splits=number_of_splits,
             test_size=validation_size,
-            random_state=random_state // 2,
+            random_state=random_state // 2 + 1,
         )
         self._verbose = verbose
         self._radius = radius
         self._n_bits = n_bits
+        self._augmentation_strategies: List[Type[AugmentationStrategy]] = [
+            # PickaxeStrategy(),
+            TautomersAugmentationStrategy(),
+            StereoisomersAugmentationStrategy(),
+        ]
+
+    def augment_molecules(self, original_molecules: List[Molecule]) -> List[Molecule]:
+        """Returns the molecules augmented using the augmentation strategies."""
+        augmented_molecules: Set[Molecule] = set(original_molecules)
+
+        for strategy in tqdm(
+            self._augmentation_strategies,
+            desc="Augmenting molecules",
+            leave=False,
+            dynamic_ncols=True,
+            disable=not self._verbose,
+        ):
+            with Pool() as pool:
+                new_molecules: List[List[Molecule]] = list(
+                    tqdm(
+                        pool.imap(
+                            strategy.augment,
+                            original_molecules,
+                        ),
+                        desc=f"Augmenting using strategy '{strategy.name()}'",
+                        leave=False,
+                        dynamic_ncols=True,
+                        disable=not self._verbose,
+                        total=len(original_molecules),
+                        unit="molecule",
+                    )
+                )
+                pool.close()
+                pool.join()
+
+            for molecules in new_molecules:
+                augmented_molecules.update(molecules)
+
+        return list(augmented_molecules)
 
     @property
     def training_molecules(self) -> List[Molecule]:
@@ -219,6 +231,8 @@ class Dataset:
                     unit="molecule",
                 )
             )
+            pool.close()
+            pool.join()
 
         molecule_labels = molecules[0].labels()
         dataset = {
@@ -257,13 +271,14 @@ class Dataset:
         Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]],
     ]:
         """Return the training set."""
-        scalers, dataset = self.to_dataset(self._training_molecules)
+        augmented_training_molecules = self.augment_molecules(self._training_molecules)
+        scalers, dataset = self.to_dataset(augmented_training_molecules)
         _, test_dataset = self.to_dataset(self._test_molecules, scalers=scalers)
         return (dataset, test_dataset)
 
     def train_features_dataframes(self) -> Dict[str, pd.DataFrame]:
         """Return the training set as dataframes."""
-        (training_dataset, _), _ = self.primary_split()
+        (training_dataset, _) = self.to_dataset(self._training_molecules)
         descriptor_names = Molecule.descriptor_names()
 
         training_dataset["descriptors"] = pd.DataFrame(
@@ -273,9 +288,8 @@ class Dataset:
         for key in training_dataset:
             if "fingerprint" in key:
                 training_dataset[key] = pd.DataFrame(training_dataset[key], index=None)
-        
-        return training_dataset
 
+        return training_dataset
 
     def train_split(
         self,
@@ -302,10 +316,11 @@ class Dataset:
             disable=not self._verbose,
             unit="split",
         ):
-            scalers, training_dataset = self.to_dataset(
+            augmented_training_molecules = self.augment_molecules(
                 [self._training_molecules[i] for i in train_indices]
             )
-            _, validation_dataset = self.to_dataset(
+            scalers, training_dataset = self.to_dataset(augmented_training_molecules)
+            _scalers, validation_dataset = self.to_dataset(
                 [self._training_molecules[i] for i in validation_indices],
                 scalers=scalers,
             )

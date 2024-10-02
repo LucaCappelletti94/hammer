@@ -2,9 +2,8 @@
 
 from typing import List, Dict
 import numpy as np
-import pandas as pd
 from rdkit.Chem import Mol  # pylint: disable=no-name-in-module
-from rdkit.Chem import MolFromSmiles  # pylint: disable=no-name-in-module
+from rdkit.Chem import MolFromSmiles, MolToSmiles  # pylint: disable=no-name-in-module
 from rdkit.Chem import MolFromSmarts  # pylint: disable=no-name-in-module
 from rdkit.Chem import rdFingerprintGenerator  # pylint: disable=no-name-in-module
 from rdkit.Chem import AddHs  # pylint: disable=no-name-in-module
@@ -82,6 +81,26 @@ class Molecule:
                 (CLASS_NAMES.index(label) for label in class_labels), dtype=np.int32
             ),
         )
+
+    @property
+    def class_label_names(self) -> List[str]:
+        """Return the class label names"""
+        return [CLASS_NAMES[label] for label in self.class_labels]
+
+    @property
+    def pathway_label_names(self) -> List[str]:
+        """Return the pathway label names"""
+        return [PATHWAY_NAMES[label] for label in self.pathway_labels]
+
+    @property
+    def superclass_label_names(self) -> List[str]:
+        """Return the superclass label names"""
+        return [SUPERCLASS_NAMES[label] for label in self.superclass_labels]
+
+    @property
+    def smiles(self) -> str:
+        """Return the SMILES string."""
+        return MolToSmiles(self.molecule)
 
     @property
     def one_hot_pathway(self) -> np.ndarray:
@@ -333,3 +352,7 @@ class Molecule:
             "pathway": self.one_hot_pathway,
             "superclass": self.one_hot_superclass,
         }
+
+    def __hash__(self) -> int:
+        """Return the hash of the molecule."""
+        return hash(self.smiles)

@@ -44,7 +44,7 @@ loss.
 
 """
 
-from typing import Dict, Optional, Tuple, List, Union
+from typing import Dict, Optional, Tuple, List
 import os
 from tensorflow.keras.models import (  # pylint: disable=no-name-in-module,import-error
     Model,  # pylint: disable=no-name-in-module,import-error
@@ -59,9 +59,6 @@ from tensorflow.keras.layers import (  # pylint: disable=no-name-in-module,impor
 )
 from tensorflow.keras.utils import (  # pylint: disable=no-name-in-module,import-error
     plot_model,  # pylint: disable=no-name-in-module,import-error
-)
-from tensorflow.keras.regularizers import (  # pylint: disable=no-name-in-module,import-error
-    L2,  # pylint: disable=no-name-in-module,import-error
 )
 from tensorflow.keras.callbacks import (  # pylint: disable=no-name-in-module,import-error
     ModelCheckpoint,  # pylint: disable=no-name-in-module,import-error
@@ -216,7 +213,7 @@ class Classifier:
         self._build(*train)
         self._model.compile(
             optimizer=Adam(clipnorm=1.0),
-            loss="binary_crossentropy",
+            loss="binary_focal_crossentropy",
             metrics={
                 "pathway": get_standard_binary_metrics(),
                 "superclass": get_standard_binary_metrics(),
@@ -291,7 +288,7 @@ class Classifier:
                 early_stopping,
                 learning_rate_scheduler,
             ],
-            batch_size=512,
+            batch_size=4096,
             shuffle=True,
             verbose=0,
             validation_data=val,

@@ -66,6 +66,7 @@ setup(
         "plot-keras-history",
         "pydot",
         "extra-keras-metrics",
+        "minedatabase",
     ],
     extras_require=extras,
 )

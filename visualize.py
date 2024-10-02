@@ -1,23 +1,22 @@
 """Executor to visualize the features."""
 
-import silence_tensorflow.auto  # pylint: disable=unused-import
 import os
-import pandas as pd
+from multiprocessing import cpu_count
+import silence_tensorflow.auto  # pylint: disable=unused-import
 import numpy as np
-import compress_json
 from tqdm.auto import tqdm
 from sklearn.decomposition import PCA
 from MulticoreTSNE import MulticoreTSNE
-from multiprocessing import cpu_count
 import matplotlib.pyplot as plt
 from matplotlib.colors import TABLEAU_COLORS
-from np_classifier.training import Trainer, Dataset
+from np_classifier.training import Dataset
 
 
 def visualize():
     """Train the model."""
     dataset = Dataset()
-    (train_x, train_y), _ = dataset.primary_split()
+    # We compute the features without augmentation
+    _scalers, (train_x, train_y) = dataset.to_dataset(dataset.training_molecules)
 
     # Since we can't possibly show all of the superclasses and classes,
     # we will only show the top 'number of colors' of each. Some samples will have multiple
@@ -151,7 +150,7 @@ def visualize():
         plt.tight_layout()
 
         os.makedirs("data_visualizations", exist_ok=True)
-        plt.savefig(f"data_visualizations/{feature_set_name}.png")
+        fig.savefig(f"data_visualizations/{feature_set_name}.png")
         plt.close()
 
 

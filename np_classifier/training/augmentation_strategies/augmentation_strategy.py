@@ -2,7 +2,6 @@
 
 from typing import List
 from abc import ABC, abstractmethod
-from np_classifier.training.molecule import Molecule
 
 
 class AugmentationStrategy(ABC):
@@ -14,6 +13,6 @@ class AugmentationStrategy(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def augment(self, molecule: Molecule) -> List[Molecule]:
-        """Augment a molecule."""
+    def augment(self, smiles: str) -> List[str]:
+        """Augment a smiles."""
         raise NotImplementedError

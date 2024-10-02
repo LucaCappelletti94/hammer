@@ -2,10 +2,10 @@
 
 from typing import List
 from rdkit.Chem.MolStandardize.rdMolStandardize import TautomerEnumerator
+from rdkit.Chem import MolToSmiles, MolFromSmiles  # pylint: disable=no-name-in-module
 from np_classifier.training.augmentation_strategies.augmentation_strategy import (
     AugmentationStrategy,
 )
-from np_classifier.training.molecule import Molecule
 
 
 class TautomersAugmentationStrategy(AugmentationStrategy):
@@ -15,9 +15,13 @@ class TautomersAugmentationStrategy(AugmentationStrategy):
         """Return the name of the augmentation strategy."""
         return "Tautomers"
 
-    def augment(self, molecule: Molecule) -> List[Molecule]:
+    def augment(self, smiles: str) -> List[str]:
         """Generate tautomers of a molecule."""
-        return [
-            molecule.into_homologue(homologue)
-            for homologue in TautomerEnumerator().Enumerate(molecule.molecule)
+        augmented_smiles: List[str] = [
+            MolToSmiles(homologue, isomericSmiles=True)
+            for homologue in TautomerEnumerator().Enumerate(MolFromSmiles(smiles))
         ]
+
+        assert smiles not in augmented_smiles
+
+        return augmented_smiles

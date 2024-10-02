@@ -60,6 +60,7 @@ setup(
         "downloaders",
         "compress_json",
         "rdkit",
+        "map4",
         "tensorflow",
         "numpy",
         "scikit-learn",

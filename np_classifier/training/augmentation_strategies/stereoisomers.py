@@ -1,6 +1,7 @@
 """Submodule providing an augmentation strategy to generate stereoisomers."""
 
 from typing import List
+from rdkit.Chem import MolToSmiles, MolFromSmiles # pylint: disable=no-name-in-module
 from rdkit.Chem.EnumerateStereoisomers import (
     EnumerateStereoisomers,
     StereoEnumerationOptions,
@@ -8,7 +9,6 @@ from rdkit.Chem.EnumerateStereoisomers import (
 from np_classifier.training.augmentation_strategies.augmentation_strategy import (
     AugmentationStrategy,
 )
-from np_classifier.training.molecule import Molecule
 
 
 class StereoisomersAugmentationStrategy(AugmentationStrategy):
@@ -36,15 +36,19 @@ class StereoisomersAugmentationStrategy(AugmentationStrategy):
         """Return the name of the augmentation strategy."""
         return "Stereoisomers"
 
-    def augment(self, molecule: Molecule) -> List[Molecule]:
+    def augment(self, smiles: str) -> List[str]:
         """Generate stereoisomers of a molecule."""
         try:
-            return [
-                molecule.into_homologue(homologue)
+            augmented_smiles: List[str] = [
+                MolToSmiles(homologue, isomericSmiles=True)
                 for homologue in EnumerateStereoisomers(
-                    molecule.molecule, options=self._stereo_options
+                    MolFromSmiles(smiles), options=self._stereo_options
                 )
             ]
+
+            assert smiles not in augmented_smiles
+
+            return augmented_smiles
         except RuntimeError as _runtime_error:
             # raise RuntimeError(
             #     f"Error generating stereoisomers for {molecule.smiles}"

@@ -2,7 +2,6 @@
 
 import silence_tensorflow.auto  # pylint: disable=unused-import
 import pandas as pd
-import compress_json
 from np_classifier.training import Trainer, Dataset
 
 

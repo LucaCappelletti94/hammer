@@ -55,6 +55,7 @@ from tensorflow.keras.layers import (  # pylint: disable=no-name-in-module,impor
     Input,  # pylint: disable=no-name-in-module,import-error
     Dense,  # pylint: disable=no-name-in-module,import-error
     BatchNormalization,  # pylint: disable=no-name-in-module,import-error
+    Dropout,  # pylint: disable=no-name-in-module,import-error
 )
 from tensorflow.keras.utils import (  # pylint: disable=no-name-in-module,import-error
     plot_model,  # pylint: disable=no-name-in-module,import-error
@@ -221,6 +222,8 @@ class Classifier:
             hidden = BatchNormalization(
                 name=f"batch_normalization_{input_layer.name}_{i}"
             )(hidden)
+        
+        hidden = Dropout(0.5)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
@@ -236,6 +239,7 @@ class Classifier:
             hidden = BatchNormalization(
                 name=f"batch_normalization_hidden_{i}",
             )(hidden)
+        hidden = Dropout(0.5)(hidden)
         return hidden
 
     def _build_pathway_head(self, input_layer: Layer, number_of_pathways: int) -> Layer:
@@ -305,7 +309,7 @@ class Classifier:
         """Train the classifier model."""
         self._build(*train)
         self._model.compile(
-            optimizer=Adam(clipnorm=1.0),
+            optimizer=Adam(),
             loss="binary_focal_crossentropy",
             metrics={
                 "pathway": get_standard_binary_metrics(),

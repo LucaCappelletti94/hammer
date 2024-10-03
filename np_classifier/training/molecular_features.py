@@ -105,7 +105,7 @@ def compute_features(
             mol=molecule_with_hydrogens
         )
 
-        features["morgan_fingerprint"] = morgan_fingerprint
+        features["morgan_fingerprint"] = morgan_fingerprint.astype(np.uint8)
 
     if include_rdkit_fingerprint:
         rdkit_fingerprint_generator = GetRDKitFPGenerator(fpSize=n_bits)
@@ -113,7 +113,7 @@ def compute_features(
             mol=molecule_with_hydrogens
         )
 
-        features["rdkit_fingerprint"] = rdkit_fingerprint
+        features["rdkit_fingerprint"] = rdkit_fingerprint.astype(np.uint8)
 
     if include_atom_pair_fingerprint:
         atom_pair_fingerprint_generator = GetAtomPairGenerator(fpSize=n_bits)
@@ -121,7 +121,7 @@ def compute_features(
             mol=molecule_with_hydrogens
         )
 
-        features["atom_pair_fingerprint"] = atom_pair_fingerprint
+        features["atom_pair_fingerprint"] = atom_pair_fingerprint.astype(np.uint8)
 
     if include_topological_torsion_fingerprint:
         topological_torsion_fingerprint_generator = GetTopologicalTorsionGenerator(
@@ -133,7 +133,7 @@ def compute_features(
             )
         )
 
-        features["topological_torsion_fingerprint"] = topological_torsion_fingerprint
+        features["topological_torsion_fingerprint"] = topological_torsion_fingerprint.astype(np.uint8)
 
     if include_feature_morgan_fingerprint:
         feature_morgan_fingerprint_generator = GetMorganGenerator(
@@ -147,7 +147,7 @@ def compute_features(
             )
         )
 
-        features["feature_morgan_fingerprint"] = feature_morgan_fingerprint
+        features["feature_morgan_fingerprint"] = feature_morgan_fingerprint.astype(np.uint8)
 
     if include_avalon_fingerprint:
         # We proceed generating the Avalon fingerprints
@@ -158,13 +158,13 @@ def compute_features(
             avalon_fingerprint.ToBitString().encode(), "u1"
         ) - ord("0")
 
-        features["avalon_fingerprint"] = avalon_fingerprint_array
+        features["avalon_fingerprint"] = avalon_fingerprint_array.astype(np.uint8)
 
     if include_map4_fingerprint:
         map4 = MAP4(dimensions=n_bits, radius=radius)
         map4_fingerprint = map4.calculate(molecule_with_hydrogens)
 
-        features["map4_fingerprint"] = map4_fingerprint
+        features["map4_fingerprint"] = map4_fingerprint.astype(np.uint8)
 
     if include_maccs_fingerprint:
         maccs_fingerprint: "ExplicitBitVect" = MACCSkeys.GenMACCSKeys(
@@ -174,7 +174,7 @@ def compute_features(
             maccs_fingerprint.ToBitString().encode(), "u1"
         ) - ord("0")
 
-        features["maccs_fingerprint"] = maccs_fingerprint_array
+        features["maccs_fingerprint"] = maccs_fingerprint_array.astype(np.uint8)
 
     if include_descriptors:
         # Next, we compute an ensemble of molecular descriptors. Sadly, most RDKIT descriptors are

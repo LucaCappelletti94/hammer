@@ -63,6 +63,9 @@ class Dataset:
         include_maccs_fingerprint: bool = False,
         include_map4_fingerprint: bool = False,
         include_descriptors: bool = False,
+        use_tautomer_augmentation_strategy: bool = True,
+        use_stereoisomer_augmentation_strategy: bool = True,
+        use_pickaxe_augmentation_strategy: bool = False,
         maximal_number_of_molecules: Optional[int] = None,
         verbose: bool = True,
     ):
@@ -100,6 +103,19 @@ class Dataset:
             Whether to include the MAP4 fingerprint.
         include_descriptors : bool
             Whether to include the descriptors.
+        use_tautomer_augmentation_strategy : bool
+            Whether to use the tautomer augmentation strategy,
+            which generates tautomers of the molecules starting
+            from the SMILES.
+        use_stereoisomer_augmentation_strategy : bool
+            Whether to use the stereoisomer augmentation strategy,
+            which generates stereoisomers of the molecules starting
+            from the SMILES.
+        use_pickaxe_augmentation_strategy : bool
+            Whether to use the pickaxe augmentation strategy,
+            which generates molecules by breaking bonds in the
+            molecules starting from the SMILES, using the precomputed
+            reference dataset.
         maximal_number_of_molecules : Optional[int]
             The maximal number of molecules to use.
             This is primarily used for testing.
@@ -428,7 +444,7 @@ class Dataset:
 
         # We allocate the arrays to store the features.
         features = {
-            key: np.zeros((number_of_molecules, value.shape[0]), dtype=np.float32)
+            key: np.zeros((number_of_molecules, value.shape[0]), dtype=value.dtype)
             for key, value in first_smile_features.items()
         }
 
@@ -455,13 +471,13 @@ class Dataset:
         # Now we allocate and fill the labels.
         labels = {
             "pathway": np.zeros(
-                (number_of_molecules, len(self._pathway_names)), dtype=np.float32
+                (number_of_molecules, len(self._pathway_names)), dtype=np.uint8
             ),
             "superclass": np.zeros(
-                (number_of_molecules, len(self._superclass_names)), dtype=np.float32
+                (number_of_molecules, len(self._superclass_names)), dtype=np.uint8
             ),
             "class": np.zeros(
-                (number_of_molecules, len(self._class_names)), dtype=np.float32
+                (number_of_molecules, len(self._class_names)), dtype=np.uint8
             ),
         }
 

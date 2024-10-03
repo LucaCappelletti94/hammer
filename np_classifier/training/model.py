@@ -116,20 +116,6 @@ class Classifier:
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
         """Build the hidden layers sub-module."""
         hidden = Concatenate(axis=-1)(inputs)
-        for i in range(5):
-            hidden = Dense(
-                4096,
-                activation="relu",
-                kernel_initializer=HeNormal(),
-                name=f"dense_hidden_{i}",
-            )(hidden)
-            hidden = BatchNormalization(
-                name=f"batch_normalization_hidden_{i}",
-            )(hidden)
-            hidden = Dropout(
-                0.5,
-                name=f"dropout_hidden_{i}",
-            )(hidden)
         for i in range(5, 10):
             hidden = Dense(
                 2048,
@@ -177,8 +163,8 @@ class Classifier:
         assert all(isinstance(value, np.ndarray) for value in outputs.values())
 
         input_layers: List[Input] = [
-            Input(shape=input_layer.shape[1:], name=name)
-            for name, input_layer in inputs.items()
+            Input(shape=input_array.shape[1:], name=name, dtype=input_array.dtype)
+            for name, input_array in inputs.items()
         ]
 
         input_modalities: List[Layer] = [
@@ -288,7 +274,7 @@ class Classifier:
                 early_stopping,
                 learning_rate_scheduler,
             ],
-            batch_size=4096,
+            batch_size=2048,
             shuffle=True,
             verbose=0,
             validation_data=val,

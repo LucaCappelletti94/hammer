@@ -107,16 +107,12 @@ class Classifier:
             hidden = BatchNormalization(
                 name=f"batch_normalization_{input_layer.name}_{i}"
             )(hidden)
-            hidden = Dropout(
-                0.4,
-                name=f"dropout_{input_layer.name}_{i}",
-            )(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
         """Build the hidden layers sub-module."""
         hidden = Concatenate(axis=-1)(inputs)
-        for i in range(10):
+        for i in range(5):
             hidden = Dense(
                 2048,
                 activation="relu",
@@ -125,10 +121,6 @@ class Classifier:
             )(hidden)
             hidden = BatchNormalization(
                 name=f"batch_normalization_hidden_{i}",
-            )(hidden)
-            hidden = Dropout(
-                0.6,
-                name=f"dropout_hidden_{i}",
             )(hidden)
         return hidden
 
@@ -213,7 +205,7 @@ class Classifier:
             show_dtype=True,
             show_layer_names=True,
             expand_nested=True,
-            dpi=200,
+            dpi=100,
             show_layer_activations=True,
             show_trainable=True,
         )

@@ -28,10 +28,8 @@ class Trainer:
         for holdout_number, (sub_train, valid) in enumerate(
             self._smiles_dataset.train_split()
         ):
-            classifier = Classifier(
-                number_of_epochs=self._number_of_epochs,
-            )
-            classifier.train(sub_train, valid, holdout_number=holdout_number)
+            classifier = Classifier()
+            classifier.train(sub_train, valid, holdout_number=holdout_number, number_of_epochs=self._number_of_epochs)
             sub_train_performance = classifier.evaluate(sub_train)
             sub_valid_performance = classifier.evaluate(valid)
             test_performance = classifier.evaluate(test)

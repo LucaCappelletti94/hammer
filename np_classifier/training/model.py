@@ -140,9 +140,11 @@ class Classifier:
         classifier._superclass_names = compress_json.load(superclass_names_path)
         return classifier
 
-    def predict_smile(self, smile: str) -> Dict[str, str]:
+    def predict_smile(self, smile: str, include_top_k: Optional[int] = 10) -> Dict[str, str]:
         """Predict the class labels for a single SMILES string."""
-        model_input_layer_names = [layer.name for layer in self._model.input]
+        assert isinstance(smile, str)
+        assert len(smile) > 0
+        model_input_layer_names = list(self._model.input.keys())
         features: Dict[str, np.ndarray] = compute_features(
             smile,
             include_morgan_fingerprint="morgan_fingerprint" in model_input_layer_names,
@@ -160,7 +162,7 @@ class Classifier:
         )
 
         features: Dict[str, np.ndarray] = {
-            key: value.reshape(-1, 1) for key, value in features.items()
+            key: value.reshape(1, -1) for key, value in features.items()
         }
 
         predictions = self._model.predict(features)
@@ -170,6 +172,29 @@ class Classifier:
             zip(self._superclass_names, predictions["superclass"][0])
         )
         class_predictions = dict(zip(self._class_names, predictions["class"][0]))
+
+        if include_top_k is not None:
+            pathway_predictions = dict(
+                sorted(
+                    pathway_predictions.items(),
+                    key=lambda item: item[1],
+                    reverse=True,
+                )[:include_top_k]
+            )
+            superclass_predictions = dict(
+                sorted(
+                    superclass_predictions.items(),
+                    key=lambda item: item[1],
+                    reverse=True,
+                )[:include_top_k]
+            )
+            class_predictions = dict(
+                sorted(
+                    class_predictions.items(),
+                    key=lambda item: item[1],
+                    reverse=True,
+                )[:include_top_k]
+            )
 
         return {
             "pathway": pathway_predictions,

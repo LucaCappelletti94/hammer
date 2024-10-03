@@ -1,0 +1,9 @@
+[
+    {
+        "model_name": "first_edition",
+        "model_url": "https://zenodo.org/records/13886359/files/model_checkpoint_0.keras?download=1",
+        "class_names": "https://zenodo.org/records/13886453/files/class_names.json?download=1",
+        "pathway_names": "https://zenodo.org/records/13886453/files/pathway_names.json?download=1",
+        "superclass_names": "https://zenodo.org/records/13886453/files/superclass_names.json?download=1"
+    }
+]

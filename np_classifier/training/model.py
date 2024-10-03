@@ -54,7 +54,6 @@ from tensorflow.keras.layers import (  # pylint: disable=no-name-in-module,impor
     Layer,  # pylint: disable=no-name-in-module,import-error
     Input,  # pylint: disable=no-name-in-module,import-error
     Dense,  # pylint: disable=no-name-in-module,import-error
-    Dropout,  # pylint: disable=no-name-in-module,import-error
     BatchNormalization,  # pylint: disable=no-name-in-module,import-error
 )
 from tensorflow.keras.utils import (  # pylint: disable=no-name-in-module,import-error
@@ -72,21 +71,111 @@ from tensorflow.keras.optimizers import (  # pylint: disable=no-name-in-module,i
 from tensorflow.keras.initializers import (  # pylint: disable=no-name-in-module,import-error
     HeNormal,  # pylint: disable=no-name-in-module,import-error
 )
+from tensorflow.keras.saving import (  # pylint: disable=no-name-in-module,import-error
+    load_model,  # pylint: disable=no-name-in-module,import-error
+)
+import compress_json
+from downloaders import BaseDownloader
 from tqdm.keras import TqdmCallback
 import numpy as np
 import pandas as pd
 from plot_keras_history import plot_history
 from extra_keras_metrics import get_standard_binary_metrics
+from np_classifier.training.molecular_features import compute_features
 
 
 class Classifier:
     """Class representing the multi-modal multi-class classifier model."""
 
-    def __init__(self, number_of_epochs: int = 10_000):
+    def __init__(self):
         """Initialize the classifier model."""
         self._model: Optional[Model] = None
         self._history: Optional[pd.DataFrame] = None
-        self._number_of_epochs = number_of_epochs
+        self._pathway_names: Optional[List[str]] = None
+        self._superclass_names: Optional[List[str]] = None
+        self._class_names: Optional[List[str]] = None
+
+    @staticmethod
+    def load(model_name: str) -> "Classifier":
+        """Load a classifier model from a file."""
+        all_model_data = compress_json.local_load("models.json")
+        model_data: Optional[Dict[str, str]] = None
+        for model in all_model_data:
+            if model["model_name"] == model_name:
+                model_data = model
+                break
+        if model_data is None:
+            available_model_names = [model["model_name"] for model in all_model_data]
+            raise ValueError(
+                f"Model {model_name} not found. Available models: {available_model_names}"
+            )
+
+        # We download the model weights and metadata from Zenodo.
+        downloader = BaseDownloader()
+        model_path = f"downloads/{model_data['model_name']}.keras"
+        class_names_path = f"downloads/{model_data['model_name']}.class_names.json"
+        pathway_names_path = f"downloads/{model_data['model_name']}.pathway_names.json"
+        superclass_names_path = (
+            f"downloads/{model_data['model_name']}.superclass_names.json"
+        )
+        downloader.download(
+            urls=[
+                model_data["model_url"],
+                model_data["class_names"],
+                model_data["pathway_names"],
+                model_data["superclass_names"],
+            ],
+            paths=[
+                model_path,
+                class_names_path,
+                pathway_names_path,
+                superclass_names_path,
+            ],
+        )
+
+        classifier = Classifier()
+        classifier._model = load_model(model_path)
+        classifier._class_names = compress_json.load(class_names_path)
+        classifier._pathway_names = compress_json.load(pathway_names_path)
+        classifier._superclass_names = compress_json.load(superclass_names_path)
+        return classifier
+
+    def predict_smile(self, smile: str) -> Dict[str, str]:
+        """Predict the class labels for a single SMILES string."""
+        model_input_layer_names = [layer.name for layer in self._model.input]
+        features: Dict[str, np.ndarray] = compute_features(
+            smile,
+            include_morgan_fingerprint="morgan_fingerprint" in model_input_layer_names,
+            include_rdkit_fingerprint="rdkit_fingerprint" in model_input_layer_names,
+            include_atom_pair_fingerprint="atom_pair_fingerprint"
+            in model_input_layer_names,
+            include_topological_torsion_fingerprint="topological_torsion_fingerprint"
+            in model_input_layer_names,
+            include_feature_morgan_fingerprint="feature_morgan_fingerprint"
+            in model_input_layer_names,
+            include_avalon_fingerprint="avalon_fingerprint" in model_input_layer_names,
+            include_maccs_fingerprint="maccs_fingerprint" in model_input_layer_names,
+            include_map4_fingerprint="map4_fingerprint" in model_input_layer_names,
+            include_descriptors="descriptors" in model_input_layer_names,
+        )
+
+        features: Dict[str, np.ndarray] = {
+            key: value.reshape(-1, 1) for key, value in features.items()
+        }
+
+        predictions = self._model.predict(features)
+
+        pathway_predictions = dict(zip(self._pathway_names, predictions["pathway"][0]))
+        superclass_predictions = dict(
+            zip(self._superclass_names, predictions["superclass"][0])
+        )
+        class_predictions = dict(zip(self._class_names, predictions["class"][0]))
+
+        return {
+            "pathway": pathway_predictions,
+            "superclass": superclass_predictions,
+            "class": class_predictions,
+        }
 
     def _build_input_modality(self, input_layer: Input) -> Layer:
         """Build the input modality sub-module."""
@@ -186,6 +275,7 @@ class Classifier:
         train: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]],
         val: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]],
         holdout_number: Optional[int] = None,
+        number_of_epochs: int = 10_000,
     ):
         """Train the classifier model."""
         self._build(*train)
@@ -246,7 +336,7 @@ class Classifier:
 
         training_history = self._model.fit(
             *train,
-            epochs=self._number_of_epochs,
+            epochs=number_of_epochs,
             callbacks=[
                 TqdmCallback(
                     verbose=1,

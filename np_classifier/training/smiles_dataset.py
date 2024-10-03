@@ -2,12 +2,14 @@
 
 from typing import List, Iterator, Tuple, Dict, Set, Optional, Type, Any
 import os
+import random
 from collections import Counter
 from multiprocessing import Pool
 import compress_json
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
+from downloaders import BaseDownloader
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
 from sklearn.preprocessing import RobustScaler
 from np_classifier.training.molecular_features import compute_features
@@ -63,9 +65,12 @@ class Dataset:
         include_maccs_fingerprint: bool = False,
         include_map4_fingerprint: bool = False,
         include_descriptors: bool = False,
-        use_tautomer_augmentation_strategy: bool = True,
-        use_stereoisomer_augmentation_strategy: bool = True,
-        use_pickaxe_augmentation_strategy: bool = False,
+        use_tautomer_augmentation_strategy: bool = False,
+        maximal_number_of_tautomers: Optional[int] = None,
+        use_stereoisomer_augmentation_strategy: bool = False,
+        maximal_number_of_stereoisomers: Optional[int] = None,
+        use_pickaxe_augmentation_strategy: bool = True,
+        maximal_number_of_pickaxe_molecules: Optional[int] = 64,
         maximal_number_of_molecules: Optional[int] = None,
         verbose: bool = True,
     ):
@@ -107,15 +112,24 @@ class Dataset:
             Whether to use the tautomer augmentation strategy,
             which generates tautomers of the molecules starting
             from the SMILES.
+        maximal_number_of_tauomers : Optional[int]
+            The maximal number of tautomers to use.
+            If None, all the tautomers identified are used.
         use_stereoisomer_augmentation_strategy : bool
             Whether to use the stereoisomer augmentation strategy,
             which generates stereoisomers of the molecules starting
             from the SMILES.
+        maximal_number_of_stereoisomers : Optional[int]
+            The maximal number of stereoisomers to use.
+            If None, all the stereoisomers identified are used.
         use_pickaxe_augmentation_strategy : bool
             Whether to use the pickaxe augmentation strategy,
             which generates molecules by breaking bonds in the
             molecules starting from the SMILES, using the precomputed
             reference dataset.
+        maximal_number_of_pickaxe_molecules : Optional[int]
+            The maximal number of molecules to use.
+            If None, all the molecules identified are used.
         maximal_number_of_molecules : Optional[int]
             The maximal number of molecules to use.
             This is primarily used for testing.
@@ -340,11 +354,15 @@ class Dataset:
             "include_map4_fingerprint": include_map4_fingerprint,
             "include_descriptors": include_descriptors,
         }
-        self._augmentation_strategies: List[Type[AugmentationStrategy]] = [
-            # PickaxeStrategy(),
-            TautomersAugmentationStrategy(),
-            StereoisomersAugmentationStrategy(),
-        ]
+
+        self._use_tautomer_augmentation_strategy = use_tautomer_augmentation_strategy
+        self._use_stereoisomer_augmentation_strategy = (
+            use_stereoisomer_augmentation_strategy
+        )
+        self._use_pickaxe_augmentation_strategy = use_pickaxe_augmentation_strategy
+        self._maximal_number_of_tautomers = maximal_number_of_tautomers
+        self._maximal_number_of_stereoisomers = maximal_number_of_stereoisomers
+        self._maximal_number_of_pickaxe_molecules = maximal_number_of_pickaxe_molecules
 
     @property
     def pathway_names(self) -> List[str]:
@@ -365,8 +383,28 @@ class Dataset:
         """Returns the molecules augmented using the augmentation strategies."""
         augmented_smiles: Optional[List[List[str]]] = None
 
-        for strategy in tqdm(
-            self._augmentation_strategies,
+        augmentation_strategies: List[
+            Tuple[Type[AugmentationStrategy], Optional[int]]
+        ] = []
+
+        if self._use_tautomer_augmentation_strategy:
+            augmentation_strategies.append(
+                (
+                    TautomersAugmentationStrategy(),
+                    self._maximal_number_of_tautomers,
+                )
+            )
+
+        if self._use_stereoisomer_augmentation_strategy:
+            augmentation_strategies.append(
+                (
+                    StereoisomersAugmentationStrategy(),
+                    self._maximal_number_of_stereoisomers,
+                )
+            )
+
+        for strategy, maximal_number_of_smiles in tqdm(
+            augmentation_strategies,
             desc="Augmenting molecules",
             leave=False,
             dynamic_ncols=True,
@@ -389,6 +427,90 @@ class Dataset:
                 )
                 pool.close()
                 pool.join()
+
+            if maximal_number_of_smiles is not None:
+                # We randomly subsample the augmented molecules.
+                for i, new_augmented in enumerate(new_augmented_smiles):
+                    if len(new_augmented) > maximal_number_of_smiles:
+                        new_augmented_smiles[i] = random.choices(
+                            new_augmented, k=maximal_number_of_smiles
+                        )
+
+            if augmented_smiles is None:
+                augmented_smiles = new_augmented_smiles
+            else:
+                for i, new_augmented in enumerate(new_augmented_smiles):
+                    augmented_smiles[i].extend(
+                        [
+                            smile
+                            for smile in new_augmented
+                            if smile not in augmented_smiles[i]
+                        ]
+                    )
+
+        # For the pickaxe strategy, we need to use the precomputed reference dataset.
+        if self._use_pickaxe_augmentation_strategy:
+            downloader = BaseDownloader(auto_extract=False)
+            downloader.download(
+                "https://zenodo.org/records/13884784/files/pickaxe.json.gz?download=1",
+                "pickaxe.json.gz",
+            )
+
+            # We load the pickaxe dataset, which contains a list of dictionaries of
+            # the form (the dots are used to indicate that the SMILES have been truncated):
+            #
+            # {
+            #    "starting_compound": {
+            #        "smiles": "CC(/C=C/C=C(\\...C@H](O)[C@@H]1O",
+            #        "inchikey": "KUDWTHAWELGNGB-BGEXNNEJSA-N"
+            #    },
+            #    "product_compounds": [
+            #        {
+            #            "smiles": "CC(/C=C/C=C(\\C)C(=O)O...(O)[C@@H]1O",
+            #            "inchikey": "PTDUTNQNFDROLZ-YYIDFOSWSA-N"
+            #        },
+            #        {
+            #            "smiles": "CC(/C=C/C=C(\\C)...O)[C@@H](O)[C@@H]1O",
+            #            "inchikey": "XSTRGXQUACVSAL-JWJFTHGCSA-N"
+            #        }
+            #    ]
+            # }
+            #
+            pickaxe_dataset: List[Dict[str, Any]] = compress_json.load(
+                "pickaxe.json.gz"
+            )
+
+            # Next, we proceed to convert it into a Dictionary mapping the starting compound smiles
+            # to the list of product compounds smiles.
+            pickaxe_dict: Dict[str, List[str]] = {
+                pickaxe["starting_compound"]["smiles"]: [
+                    product["smiles"] for product in pickaxe["product_compounds"]
+                ]
+                for pickaxe in pickaxe_dataset
+            }
+
+            # We augment the smiles using the pickaxe strategy. We cannot run this in parallel
+            # using multiprocessing because that would require copying the pickaxe_dict to each
+            # process, and as this dictionary can be quite large, that would potentially consume
+            # a lot of memory.
+            new_augmented_smiles: List[List[str]] = [
+                [] if smile not in pickaxe_dict else pickaxe_dict[smile]
+                for smile in tqdm(
+                    smiles,
+                    desc="Augmenting using strategy 'pickaxe'",
+                    leave=False,
+                    dynamic_ncols=True,
+                    disable=not self._verbose,
+                )
+            ]
+
+            if self._maximal_number_of_pickaxe_molecules is not None:
+                # We randomly subsample the augmented molecules.
+                for i, new_augmented in enumerate(new_augmented_smiles):
+                    if len(new_augmented) > self._maximal_number_of_pickaxe_molecules:
+                        new_augmented_smiles[i] = random.choices(
+                            new_augmented, k=self._maximal_number_of_pickaxe_molecules
+                        )
 
             if augmented_smiles is None:
                 augmented_smiles = new_augmented_smiles
@@ -502,12 +624,12 @@ class Dataset:
 
         return (scalers, (features, labels))
 
-    def primary_split(self, augment: bool = True) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+    def primary_split(
+        self, augment: bool = True
+    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """Split the dataset into training and test sets."""
         if augment:
-            training_smiles: List[str] = [
-                self._smiles[i] for i in self._train_indices
-            ]
+            training_smiles: List[str] = [self._smiles[i] for i in self._train_indices]
             augmented_training_smile: List[List[str]] = self.augment_smiles(
                 training_smiles
             )
@@ -519,7 +641,9 @@ class Dataset:
             ]
             augmented_label_indices: List[int] = [
                 self._train_indices[i]
-                for i, augmented in zip(range(len(training_smiles)), augmented_training_smile)
+                for i, augmented in zip(
+                    range(len(training_smiles)), augmented_training_smile
+                )
                 for _ in range(len(augmented))
             ]
             training_label_indices: List[int] = (
@@ -538,7 +662,7 @@ class Dataset:
 
         _scalers, test_dataset = self.to_dataset(
             [self._smiles[i] for i in self._test_indices],
-            [i for i in self._test_indices],
+            self._test_indices,
             scalers=scalers,
         )
         return (training_dataset, test_dataset)

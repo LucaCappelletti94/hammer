@@ -14,7 +14,7 @@ def train():
     for device in gpu_devices:
         tf.config.experimental.set_memory_growth(device, True)
 
-    dataset = Dataset(maximal_number_of_molecules=1_000)
+    dataset = Dataset()
 
     # We store to jsons the current pathway, superclasses, and classes
     compress_json.dump(dataset.pathway_names, "pathway_names.json")

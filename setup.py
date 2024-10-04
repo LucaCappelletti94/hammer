@@ -67,6 +67,7 @@ setup(
         "plot-keras-history",
         "pydot",
         "extra-keras-metrics",
+        "compress_pickle"
     ],
     extras_require=extras,
 )

@@ -33,7 +33,7 @@ class Trainer:
             sub_train_performance = classifier.evaluate(sub_train)
             sub_valid_performance = classifier.evaluate(valid)
             if test is None:
-                _train, test = self._smiles_dataset.primary_split()
+                _scalers, _train, test = self._smiles_dataset.primary_split()
             test_performance = classifier.evaluate(test)
             for performance, subset in [
                 (sub_train_performance, "subtrain"),

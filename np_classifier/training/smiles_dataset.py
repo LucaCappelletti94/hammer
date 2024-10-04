@@ -626,7 +626,7 @@ class Dataset:
 
     def primary_split(
         self, augment: bool = True
-    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+    ) -> Tuple[RobustScaler, Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """Split the dataset into training and test sets."""
         if augment:
             training_smiles: List[str] = [self._smiles[i] for i in self._train_indices]
@@ -665,7 +665,7 @@ class Dataset:
             self._test_indices,
             scalers=scalers,
         )
-        return (training_dataset, test_dataset)
+        return (scalers, training_dataset, test_dataset)
 
     def train_split(
         self,

@@ -62,7 +62,7 @@ class Dataset:
         include_topological_torsion_fingerprint: bool = False,
         include_feature_morgan_fingerprint: bool = True,
         include_avalon_fingerprint: bool = True,
-        include_maccs_fingerprint: bool = False,
+        include_maccs_fingerprint: bool = True,
         include_map4_fingerprint: bool = False,
         include_descriptors: bool = True,
         use_tautomer_augmentation_strategy: bool = True,
@@ -139,7 +139,7 @@ class Dataset:
         """
         local_path = os.path.dirname(os.path.abspath(__file__))
         categorical_smiles: pd.DataFrame = pd.read_csv(
-            os.path.join(local_path, "categorical.csv")
+            os.path.join(local_path, "categorical.csv.gz")
         )
         multi_label_smiles: List[Dict[str, Any]] = compress_json.load(
             os.path.join(local_path, "multi_label.json")

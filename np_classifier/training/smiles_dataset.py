@@ -139,10 +139,12 @@ class Dataset:
         """
         local_path = os.path.dirname(os.path.abspath(__file__))
         categorical_smiles: pd.DataFrame = pd.read_csv(
-            os.path.join(local_path, "categorical.csv.gz")
+            os.path.join(local_path, "categorical.csv")
         )
         multi_label_smiles: List[Dict[str, Any]] = compress_json.load(
             os.path.join(local_path, "multi_label.json")
+        ) + compress_json.load(
+            os.path.join(local_path, "relabelled.json")
         )
 
         if maximal_number_of_molecules is not None:
@@ -382,6 +384,15 @@ class Dataset:
     def augment_smiles(self, smiles: List[str]) -> List[List[str]]:
         """Returns the molecules augmented using the augmentation strategies."""
         augmented_smiles: Optional[List[List[str]]] = None
+
+        if not any(
+            [
+                self._use_tautomer_augmentation_strategy,
+                self._use_stereoisomer_augmentation_strategy,
+                self._use_pickaxe_augmentation_strategy,
+            ]
+        ):
+            return [[] for _ in smiles]
 
         augmentation_strategies: List[
             Tuple[Type[AugmentationStrategy], Optional[int]]
@@ -672,6 +683,7 @@ class Dataset:
         augment: bool = True,
     ) -> Iterator[
         Tuple[
+            RobustScaler,
             Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]],
             Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]],
         ]
@@ -757,6 +769,7 @@ class Dataset:
                 scalers=scalers,
             )
             yield (
+                scalers,
                 training_dataset,
                 validation_dataset,
             )

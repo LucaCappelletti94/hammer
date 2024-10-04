@@ -1,27 +1,4 @@
-"""Submodule providing the multi-modal multi-class classifier model.
-
-Implementative details
-----------------------
-The model is a feed-forward neural network based on Keras/TensorFlow.
-
-Multimodality
-~~~~~~~~~~~~~~~~~~~~~~
-The model receives a dictionary of inputs, where the keys are the name
-of the modality and the values are the input tensors.
-For each modality, it initializes a separate sub-module. The sub-modules
-are responsible for processing the input tensors of the corresponding modality.
-
-Multiclass
-~~~~~~~~~~~~~~~~~~~~~~
-The model receives three main output tensors, one for each class level
-(pathway, superclass, class). Each output tensor is itself a vector of
-binary values, where each value corresponds to a class label.
-Some samples may have multiple class labels for any given class level,
-and as such, the model uses a binary cross-entropy loss function for
-each output tensor, with a sigmoid activation function. Each head of
-the model is a separate sub-module, responsible for processing the output
-tensor of the corresponding class level.
-"""
+"""Module containing the multi-modal multi-class classifier model."""
 
 from typing import Dict, Optional, Tuple, List
 import os
@@ -35,7 +12,9 @@ from tensorflow.keras.layers import (  # pylint: disable=no-name-in-module,impor
     Dense,  # pylint: disable=no-name-in-module,import-error
     BatchNormalization,  # pylint: disable=no-name-in-module,import-error
     Dropout,  # pylint: disable=no-name-in-module,import-error
+    Multiply,  # pylint: disable=no-name-in-module,import-error
 )
+from tensorflow.keras import ops as K  # pylint: disable=no-name-in-module,import-error
 from tensorflow.keras.utils import (  # pylint: disable=no-name-in-module,import-error
     plot_model,  # pylint: disable=no-name-in-module,import-error
 )
@@ -54,29 +33,82 @@ from tensorflow.keras.initializers import (  # pylint: disable=no-name-in-module
 from tensorflow.keras.saving import (  # pylint: disable=no-name-in-module,import-error
     load_model,  # pylint: disable=no-name-in-module,import-error
 )
-from tensorflow.keras.losses import (  # pylint: disable=no-name-in-module,import-error
-    SquaredHinge,  # pylint: disable=no-name-in-module,import-error
-)
+import tensorflow as tf
 import compress_json
 from downloaders import BaseDownloader
 from tqdm.keras import TqdmCallback
 import numpy as np
 import pandas as pd
+import compress_pickle
+from sklearn.preprocessing import RobustScaler
 from plot_keras_history import plot_history
 from extra_keras_metrics import get_standard_binary_metrics
 from np_classifier.training.molecular_features import compute_features
+from np_classifier.training.exceptions import (
+    UnknownPathwayNameError,
+    UnknownSuperclassNameError,
+)
 
 
 class Classifier:
     """Class representing the multi-modal multi-class classifier model."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        pathway_names: List[str],
+        superclass_names: List[str],
+        class_names: List[str],
+        scalers: Dict[str, RobustScaler],
+    ):
         """Initialize the classifier model."""
+        # Some healthy defensive programming.
+        assert isinstance(pathway_names, list)
+        assert isinstance(superclass_names, list)
+        assert isinstance(class_names, list)
+        assert isinstance(scalers, dict)
+        assert len(pathway_names) > 0
+        assert len(superclass_names) > 0
+        assert len(class_names) > 0
+        assert all(isinstance(name, str) for name in pathway_names)
+        assert all(isinstance(name, str) for name in superclass_names)
+        assert all(isinstance(name, str) for name in class_names)
+
         self._model: Optional[Model] = None
         self._history: Optional[pd.DataFrame] = None
-        self._pathway_names: Optional[List[str]] = None
-        self._superclass_names: Optional[List[str]] = None
-        self._class_names: Optional[List[str]] = None
+        self._scalers: Dict[str, RobustScaler] = scalers
+        self._pathway_names: List[str] = pathway_names
+        self._superclass_names: List[str] = superclass_names
+        self._class_names: List[str] = class_names
+
+        dag = compress_json.local_load("dag.json")
+
+        # We create a mask to harmonize the predictions.
+        self._pathway_to_superclass_mask = np.zeros(
+            (len(self._pathway_names), len(self._superclass_names)),
+            dtype=np.uint8,
+        )
+        self._superclass_to_class_mask = np.zeros(
+            (len(self._superclass_names), len(self._class_names)),
+            dtype=np.uint8,
+        )
+        for i, superclass_name in enumerate(self._superclass_names):
+            for pathway_name in dag["superclasses"][superclass_name]:
+                try:
+                    pathway_index = self._pathway_names.index(pathway_name)
+                    self._pathway_to_superclass_mask[pathway_index, i] = 1
+                except ValueError as index_error:
+                    raise UnknownPathwayNameError(
+                        pathway_name, superclass_name
+                    ) from index_error
+        for j, class_name in enumerate(self._class_names):
+            for superclass_name in dag["classes"][class_name]:
+                try:
+                    superclass_index = self._superclass_names.index(superclass_name)
+                    self._superclass_to_class_mask[superclass_index, j] = 1
+                except ValueError as index_error:
+                    raise UnknownSuperclassNameError(
+                        superclass_name, class_name
+                    ) from index_error
 
     @staticmethod
     def load(model_name: str) -> "Classifier":
@@ -101,26 +133,32 @@ class Classifier:
         superclass_names_path = (
             f"downloads/{model_data['model_name']}.superclass_names.json"
         )
+        scalers_path = f"downloads/{model_data['model_name']}.scalers.pkl"
         downloader.download(
             urls=[
                 model_data["model_url"],
                 model_data["class_names"],
                 model_data["pathway_names"],
                 model_data["superclass_names"],
+                model_data["scalers"],
             ],
             paths=[
                 model_path,
                 class_names_path,
                 pathway_names_path,
                 superclass_names_path,
+                scalers_path,
             ],
         )
 
-        classifier = Classifier()
+        classifier = Classifier(
+            class_names=compress_json.load(class_names_path),
+            pathway_names=compress_json.load(pathway_names_path),
+            superclass_names=compress_json.load(superclass_names_path),
+            scalers=compress_pickle.load(scalers_path),
+        )
         classifier._model = load_model(model_path)
-        classifier._class_names = compress_json.load(class_names_path)
-        classifier._pathway_names = compress_json.load(pathway_names_path)
-        classifier._superclass_names = compress_json.load(superclass_names_path)
+
         return classifier
 
     def predict_smile(
@@ -149,6 +187,12 @@ class Classifier:
         features: Dict[str, np.ndarray] = {
             key: value.reshape(1, -1) for key, value in features.items()
         }
+
+        # We scale the features using the scalers.
+        assert self._scalers is not None
+        for key, value in features.items():
+            if key in self._scalers:
+                features[key] = self._scalers[key].transform(value)
 
         predictions = self._model.predict(features)
 
@@ -192,9 +236,9 @@ class Classifier:
         hidden = input_layer
 
         if input_layer.shape[1] == 2048:
-            hidden_sizes = 768
+            hidden_sizes = 1024
         else:
-            hidden_sizes = 128
+            hidden_sizes = 256
 
         for i in range(4):
             hidden = Dense(
@@ -207,7 +251,7 @@ class Classifier:
                 name=f"batch_normalization_{input_layer.name}_{i}"
             )(hidden)
 
-        hidden = Dropout(0.4)(hidden)
+        hidden = Dropout(0.6)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
@@ -215,7 +259,7 @@ class Classifier:
         hidden = Concatenate(axis=-1)(inputs)
         for i in range(4):
             hidden = Dense(
-                2048,
+                4096,
                 activation="relu",
                 kernel_initializer=HeNormal(),
                 name=f"dense_hidden_{i}",
@@ -223,26 +267,86 @@ class Classifier:
             hidden = BatchNormalization(
                 name=f"batch_normalization_hidden_{i}",
             )(hidden)
-        hidden = Dropout(0.3)(hidden)
+        hidden = Dropout(0.6)(hidden)
         return hidden
 
-    def _build_pathway_head(self, input_layer: Layer, number_of_pathways: int) -> Layer:
+    def _build_pathway_head(self, hidden_output: tf.Tensor) -> tf.Tensor:
         """Build the output head sub-module."""
-        return Dense(number_of_pathways, name="pathway", activation="linear")(
-            input_layer
-        )
+        number_of_pathways = len(self._pathway_names)
+        hidden = Dense(
+            1024,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+            name="dense_superclass",
+        )(hidden_output)
+        return Dense(number_of_pathways, name="pathway", activation="sigmoid")(hidden)
 
     def _build_superclass_head(
-        self, input_layer: Layer, number_of_superclasses: int
-    ) -> Layer:
+        self,
+        hidden_output: tf.Tensor,
+        pathway_output: tf.Tensor,
+    ) -> tf.Tensor:
         """Build the output head sub-module."""
-        return Dense(number_of_superclasses, name="superclass", activation="linear")(
-            input_layer
+        number_of_superclasses = len(self._superclass_names)
+        hidden = Dense(
+            1024,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+            name="dense_superclass",
+        )(hidden_output)
+        unharmonized_superclass_output: tf.Tensor = Dense(
+            number_of_superclasses, name="unharmonized_superclass", activation="sigmoid"
+        )(hidden)
+        # We use the pathway output and the self._pathway_to_superclass_mask to compute
+        # the harmonized superclass output. We do so by multiplying the pathway output
+        # by the mask, summing the results over the superclasses axes, and then multiplying
+        # the result by the superclass output.
+        #
+        # The self._pathway_to_superclass_mask is a numpy ndarray with shape (number_of_pathways, number_of_superclasses),
+        # while the pathway_output is a tensor with shape (batch_size, number_of_pathways).
+        #
+        # The unharmonized_superclass_output tensor has shape (batch_size, number_of_superclasses).
+        #
+        # The weighted_superclass_mask tensor has shape (batch_size, number_of_superclasses).
+
+        weighted_superclass_mask: tf.Tensor = K.sum(
+            pathway_output[:, :, None] * self._pathway_to_superclass_mask[None, :, :],
+            axis=1,
+        )
+        harmonized_superclass_output: tf.Tensor = Multiply(name="superclass")(
+            [unharmonized_superclass_output, weighted_superclass_mask]
         )
 
-    def _build_class_head(self, input_layer: Layer, number_of_classes: int) -> Layer:
+        return harmonized_superclass_output
+
+    def _build_class_head(
+        self, hidden_output: tf.Tensor, superclasses_output: tf.Tensor
+    ) -> tf.Tensor:
         """Build the output head sub-module."""
-        return Dense(number_of_classes, name="class", activation="linear")(input_layer)
+        number_of_classes = len(self._class_names)
+        hidden = Dense(
+            1024,
+            activation="relu",
+            kernel_initializer=HeNormal(),
+            name="dense_superclass",
+        )(hidden_output)
+        unharmonized_class_output: tf.Tensor = Dense(
+            number_of_classes, name="unharmonized_class", activation="sigmoid"
+        )(hidden)
+        # We use the superclass output and the self._superclass_to_class_mask to compute
+        # the harmonized class output. We do so by multiplying the superclass output
+        # by the mask, summing the results over the classes axes, and then multiplying
+        # the result by the class output.
+        weighted_class_mask: tf.Tensor = K.sum(
+            superclasses_output[:, :, None]
+            * self._superclass_to_class_mask[None, :, :],
+            axis=1,
+        )
+        harmonized_class_output: tf.Tensor = Multiply(name="class")(
+            [unharmonized_class_output, weighted_class_mask]
+        )
+
+        return harmonized_class_output
 
     def _build(
         self,
@@ -256,6 +360,11 @@ class Classifier:
         assert all(isinstance(value, np.ndarray) for value in inputs.values())
         assert all(isinstance(value, np.ndarray) for value in outputs.values())
 
+        # Validate the output shapes.
+        assert outputs["pathway"].shape[1] == len(self._pathway_names)
+        assert outputs["superclass"].shape[1] == len(self._superclass_names)
+        assert outputs["class"].shape[1] == len(self._class_names)
+
         input_layers: List[Input] = [
             Input(shape=input_array.shape[1:], name=name, dtype=input_array.dtype)
             for name, input_array in inputs.items()
@@ -267,11 +376,14 @@ class Classifier:
 
         hidden: Layer = self._build_hidden_layers(input_modalities)
 
-        pathway_head = self._build_pathway_head(hidden, outputs["pathway"].shape[1])
+        pathway_head = self._build_pathway_head(hidden_output=hidden)
         superclass_head = self._build_superclass_head(
-            hidden, outputs["superclass"].shape[1]
+            hidden_output=hidden,
+            pathway_output=pathway_head,
         )
-        class_head = self._build_class_head(hidden, outputs["class"].shape[1])
+        class_head = self._build_class_head(
+            hidden_output=hidden, superclasses_output=superclass_head
+        )
 
         self._model = Model(
             inputs={input_layer.name: input_layer for input_layer in input_layers},
@@ -292,26 +404,14 @@ class Classifier:
     ):
         """Train the classifier model."""
         self._build(*train)
-        # We setup loss weights so that the output with more classes, which is the harder
-        # to predict, has a higher weight.
-        total_number_of_outputs = sum((
-            output.shape[1]
-            for output in train[1].values()
-        ))
-        loss_weights = {
-            "pathway": train[1]["pathway"].shape[1] / total_number_of_outputs,
-            "superclass": train[1]["superclass"].shape[1] / total_number_of_outputs,
-            "class": train[1]["class"].shape[1] / total_number_of_outputs,
-        }
         self._model.compile(
             optimizer=Adam(),
-            loss=SquaredHinge(),
+            loss="binary_crossentropy",
             metrics={
                 "pathway": get_standard_binary_metrics(),
                 "superclass": get_standard_binary_metrics(),
                 "class": get_standard_binary_metrics(),
             },
-            loss_weights=loss_weights,
         )
         plot_model(
             self._model,
@@ -440,6 +540,31 @@ class Classifier:
         else:
             self._history.to_csv("histories/history.csv")
             fig.savefig("histories/history.png")
+
+    def save(self, path: str):
+        """Save the classifier model to a file."""
+        assert self._model is not None, "Model not trained yet."
+        assert path.endswith(".tar.gz"), "Model path must end with .tar.gz"
+
+        # We convert the path into a directory.
+        path = path[:-7]
+        # We create the directories if they do not exist.
+        os.makedirs(path, exist_ok=True)
+
+        model_path = os.path.join(path, "model.keras")
+        class_names_path = os.path.join(path, "class_names.json")
+        pathway_names_path = os.path.join(path, "pathway_names.json")
+        superclass_names_path = os.path.join(path, "superclass_names.json")
+        scalers_path = os.path.join(path, "scalers.pkl")
+
+        compress_json.dump(self._class_names, class_names_path)
+        compress_json.dump(self._pathway_names, pathway_names_path)
+        compress_json.dump(self._superclass_names, superclass_names_path)
+        compress_pickle.dump(self._scalers, scalers_path)
+        self._model.save(model_path)
+
+        # We compress the files into a single tar.gz file.
+        os.system(f"tar -czvf {path}.tar.gz {path}")
 
     def evaluate(
         self, test: Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]

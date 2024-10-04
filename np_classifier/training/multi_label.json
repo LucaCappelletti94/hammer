@@ -1647,7 +1647,7 @@
             "Cyclic peptides",
             "Depsipeptides",
             "Lipopeptides",
-            "RiPPs"
+            "RiPPs-Lasso peptides"
         ]
     },
     {
@@ -3046,6 +3046,82 @@
         ],
         "class_labels": [
             "Phloroglucinol-terpene hybrids"
+        ]
+    },
+    {
+        "smiles": "CCC(C)C1NC(=O)C(Cc2ccc(O)cc2)N(C)C(=O)C(CC(C)C)N2C(=O)C(CCC2O)NC(=O)C(CCC(N)=O)NC(=O)C(NC(=O)C(O)Cc2ccc(O)cc2)C(C)OC1=O",
+        "pathway_labels": [
+            "Amino acids and Peptides",
+            "Polyketides"
+        ],
+        "superclass_labels": [
+            "Oligopeptides"
+        ],
+        "class_labels": [
+            "Ahp-containing cyclodepsipeptides",
+            "Cyclic peptides",
+            "Depsipeptides"
+        ]
+    },
+    {
+        "smiles": "CSCCC(NC=O)C(=O)NC(CCCN=C(N)N)C(=O)NC(C(=O)NCC(=O)NC(CC(N)=O)C(=O)NC(C)C(=O)NC(CC(=O)O)C(=O)N[P+]([O-])(OCCC[NH3+])OCC1OC(n2cnc3c(N)ncnc32)C(O)C1O)C(C)O",
+        "pathway_labels": [
+            "Amino acids and Peptides"
+        ],
+        "superclass_labels": [
+            "Oligopeptides"
+        ],
+        "class_labels": [
+            "RiPPs-Microcins"
+        ]
+    },
+    {
+        "smiles": "CCC(C)C1NC(=O)C(C)NC(=O)C2NC(=O)C(C(C)CC)NC(=O)C3CCCN3C(=O)CNC(=O)C(CO)NC(=O)C3CNCCCCC(C(=O)O)NC(=O)C4NC(=O)C(C(C)O)NC(=O)CNC(=O)C(C(O)C(=O)O)NC(=O)C(CSC(C)C(NC(=O)C(CO)NC(=O)C(C)NC(=O)C(NC(=O)C(CCC(=O)O)[N+](C)(C)C)CSC4C)C(=O)NC(CSC2C)C(=O)N3)NC1=O",
+        "pathway_labels": [
+            "Amino acids and Peptides"
+        ],
+        "superclass_labels": [
+            "Oligopeptides"
+        ],
+        "class_labels": [
+            "RiPPs-Amatoxins and Phallotoxins",
+            "RiPPs-Lanthipeptides"
+        ]
+    },
+    {
+        "smiles": "CSCCC(NC(=S)C(NC(=O)C(C)=O)C(C)C)C(=S)NC(C)C(=O)NC(C)C(=S)NC(C)C(=S)NC(C)C(=O)NC1C(=O)NC(C(C)C)C(=O)NC(C)C(=O)NC(Cc2ccccc2)C(=O)NC(C(O)c2c[n+](C)cn2C)C(=O)NC=CSC1C",
+        "pathway_labels": [
+            "Amino acids and Peptides"
+        ],
+        "superclass_labels": [
+            "Oligopeptides"
+        ],
+        "class_labels": [
+            "Cyclic peptides"
+        ]
+    },
+    {
+        "smiles": "CCC(C)C1NC(=O)CNC(=O)C(Cc2ccccc2)NC(=O)C2CNCCCCC(C(=O)O)NC(=O)C3NC(=O)C(C(C)O)NC(=O)CNC(=O)C(C(O)C(=O)O)NC(=O)C4CSC(C)C(NC(=O)C(CO)NC(=O)C(C)NC(=O)C(NC(=O)C(CCC(=O)O)[N+](C)(C)C)CSC3C)C(=O)NC(CSC(C)C(NC(=O)C(C(C)C)NC1=O)C(=O)NC(C(C)CC)C(=O)NC(C(C)C)C(=O)N4)C(=O)N2",
+        "pathway_labels": [
+            "Amino acids and Peptides"
+        ],
+        "superclass_labels": [
+            "Oligopeptides"
+        ],
+        "class_labels": [
+            "RiPPs-Lanthipeptides"
+        ]
+    },
+    {
+        "smiles": "C=C1NC(=O)C2NC(=O)C(CC(C)C)NC(=O)C(NC(=O)C3CSC(C)C(NC(=O)C(Cc4ccccc4)NC(=O)C4NC(=O)C([NH3+])CSC4C)C(=O)NC(CC(C)C)C(=O)N4CCCC4C(=O)NCC(=O)NCC(=O)NCC(=O)NCC(=O)NC(C(C)C)C(=O)N3)C(C)SCC(NC(=O)C(CCC(=O)[O-])NC1=O)C(=O)NC(C(C)CC)C(=O)NC=CSC2C",
+        "pathway_labels": [
+            "Amino acids and Peptides"
+        ],
+        "superclass_labels": [
+            "Oligopeptides"
+        ],
+        "class_labels": [
+            "RiPPs-Lanthipeptides"
         ]
     }
 ]

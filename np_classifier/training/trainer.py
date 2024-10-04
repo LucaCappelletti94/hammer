@@ -25,11 +25,17 @@ class Trainer:
         """Train the classifier."""
         test = None
         all_performance = []
-        for holdout_number, (sub_train, valid) in enumerate(
+        for holdout_number, (scalers, sub_train, valid) in enumerate(
             self._smiles_dataset.train_split()
         ):
-            classifier = Classifier()
+            classifier = Classifier(
+                class_names=self._smiles_dataset.class_names,
+                superclass_names=self._smiles_dataset.superclass_names,
+                pathway_names=self._smiles_dataset.pathway_names,
+                scalers=scalers,
+            )
             classifier.train(sub_train, valid, holdout_number=holdout_number, number_of_epochs=self._number_of_epochs)
+            classifier.save(f"holdout_{holdout_number}.tar.gz")
             sub_train_performance = classifier.evaluate(sub_train)
             sub_valid_performance = classifier.evaluate(valid)
             if test is None:

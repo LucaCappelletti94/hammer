@@ -174,3 +174,5 @@ feature_morgan_fingerprint.csv
 topological_torsion_fingerprint.csv
 avalon_fingerprint.csv
 pickaxe.json.gz
+cache
+*.tar.gz

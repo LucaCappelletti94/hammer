@@ -21,27 +21,6 @@ and as such, the model uses a binary cross-entropy loss function for
 each output tensor, with a sigmoid activation function. Each head of
 the model is a separate sub-module, responsible for processing the output
 tensor of the corresponding class level.
-
-Principal layers
-~~~~~~~~~~~~~~~~~~~~~~
-The model uses a combination of dense layers, batch normalization layers,
-and dropout layers. The dense layers are responsible for the main processing
-of the input tensors, while the batch normalization layers are used to
-normalize the activations of the previous layer at each batch. The dropout
-layers are used to prevent overfitting by randomly setting a fraction of
-the input units to 0 at each update during training. By default, the dropout
-rate is set to 0.5. The model also uses ReLU activation functions for the
-dense layers. As aforementioned, the output layers use a sigmoid activation
-function.
-
-Training strategy
-~~~~~~~~~~~~~~~~~~~~~~
-The model optimizer is Adam, with the default learning rate of 0.001.
-The model also employs early stopping with a patience of 100 epochs,
-with a maximal number of epochs set to 10_000, based on the training
-loss. 
-
-
 """
 
 from typing import Dict, Optional, Tuple, List
@@ -74,6 +53,9 @@ from tensorflow.keras.initializers import (  # pylint: disable=no-name-in-module
 )
 from tensorflow.keras.saving import (  # pylint: disable=no-name-in-module,import-error
     load_model,  # pylint: disable=no-name-in-module,import-error
+)
+from tensorflow.keras.losses import (  # pylint: disable=no-name-in-module,import-error
+    SquaredHinge,  # pylint: disable=no-name-in-module,import-error
 )
 import compress_json
 from downloaders import BaseDownloader
@@ -141,7 +123,9 @@ class Classifier:
         classifier._superclass_names = compress_json.load(superclass_names_path)
         return classifier
 
-    def predict_smile(self, smile: str, include_top_k: Optional[int] = 10) -> Dict[str, str]:
+    def predict_smile(
+        self, smile: str, include_top_k: Optional[int] = 10
+    ) -> Dict[str, str]:
         """Predict the class labels for a single SMILES string."""
         assert isinstance(smile, str)
         assert len(smile) > 0
@@ -212,7 +196,7 @@ class Classifier:
         else:
             hidden_sizes = 128
 
-        for i in range(5):
+        for i in range(4):
             hidden = Dense(
                 hidden_sizes,
                 activation="relu",
@@ -222,14 +206,14 @@ class Classifier:
             hidden = BatchNormalization(
                 name=f"batch_normalization_{input_layer.name}_{i}"
             )(hidden)
-        
-        hidden = Dropout(0.5)(hidden)
+
+        hidden = Dropout(0.4)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
         """Build the hidden layers sub-module."""
         hidden = Concatenate(axis=-1)(inputs)
-        for i in range(5):
+        for i in range(4):
             hidden = Dense(
                 2048,
                 activation="relu",
@@ -239,12 +223,12 @@ class Classifier:
             hidden = BatchNormalization(
                 name=f"batch_normalization_hidden_{i}",
             )(hidden)
-        hidden = Dropout(0.5)(hidden)
+        hidden = Dropout(0.3)(hidden)
         return hidden
 
     def _build_pathway_head(self, input_layer: Layer, number_of_pathways: int) -> Layer:
         """Build the output head sub-module."""
-        return Dense(number_of_pathways, name="pathway", activation="sigmoid")(
+        return Dense(number_of_pathways, name="pathway", activation="linear")(
             input_layer
         )
 
@@ -252,13 +236,13 @@ class Classifier:
         self, input_layer: Layer, number_of_superclasses: int
     ) -> Layer:
         """Build the output head sub-module."""
-        return Dense(number_of_superclasses, name="superclass", activation="sigmoid")(
+        return Dense(number_of_superclasses, name="superclass", activation="linear")(
             input_layer
         )
 
     def _build_class_head(self, input_layer: Layer, number_of_classes: int) -> Layer:
         """Build the output head sub-module."""
-        return Dense(number_of_classes, name="class", activation="sigmoid")(input_layer)
+        return Dense(number_of_classes, name="class", activation="linear")(input_layer)
 
     def _build(
         self,
@@ -308,14 +292,26 @@ class Classifier:
     ):
         """Train the classifier model."""
         self._build(*train)
+        # We setup loss weights so that the output with more classes, which is the harder
+        # to predict, has a higher weight.
+        total_number_of_outputs = sum((
+            output.shape[1]
+            for output in train[1].values()
+        ))
+        loss_weights = {
+            "pathway": train[1]["pathway"].shape[1] / total_number_of_outputs,
+            "superclass": train[1]["superclass"].shape[1] / total_number_of_outputs,
+            "class": train[1]["class"].shape[1] / total_number_of_outputs,
+        }
         self._model.compile(
             optimizer=Adam(),
-            loss="binary_focal_crossentropy",
+            loss=SquaredHinge(),
             metrics={
                 "pathway": get_standard_binary_metrics(),
                 "superclass": get_standard_binary_metrics(),
                 "class": get_standard_binary_metrics(),
             },
+            loss_weights=loss_weights,
         )
         plot_model(
             self._model,
@@ -357,11 +353,49 @@ class Classifier:
 
         early_stopping = EarlyStopping(
             monitor="val_class_mcc",
-            patience=1000,
+            patience=500,
             verbose=1,
             mode="max",
             restore_best_weights=True,
         )
+
+        # We compute the sample weights by combining the reciprocal of the class frequencies.
+        # We start by counting the number of samples for each class.
+        pathway_counts = train[1]["pathway"].sum(axis=0)
+        superclass_counts = train[1]["superclass"].sum(axis=0)
+        class_counts = train[1]["class"].sum(axis=0)
+
+        # We determine a sample of rarity for each sample. When a sample has multiple classes,
+        # we determine its rarity by multiplying the rarity of each class.
+        number_of_samples = train[1]["pathway"].shape[0]
+
+        pathway_sample_rarity = np.fromiter(
+            (
+                np.sum(number_of_samples / pathway_counts[sample_pathways == 1])
+                for sample_pathways in train[1]["pathway"]
+            ),
+            dtype=np.float32,
+        )
+        superclass_sample_rarity = np.fromiter(
+            (
+                np.sum(number_of_samples / superclass_counts[sample_superclasses == 1])
+                for sample_superclasses in train[1]["superclass"]
+            ),
+            dtype=np.float32,
+        )
+        class_sample_rarity = np.fromiter(
+            (
+                np.sum(number_of_samples / class_counts[sample_classes == 1])
+                for sample_classes in train[1]["class"]
+            ),
+            dtype=np.float32,
+        )
+
+        sample_weight = {
+            "pathway": pathway_sample_rarity,
+            "superclass": superclass_sample_rarity,
+            "class": class_sample_rarity,
+        }
 
         training_history = self._model.fit(
             *train,
@@ -385,6 +419,7 @@ class Classifier:
                 early_stopping,
                 learning_rate_scheduler,
             ],
+            sample_weight=sample_weight,
             batch_size=4096,
             shuffle=True,
             verbose=0,

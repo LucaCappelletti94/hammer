@@ -23,7 +23,7 @@ class Trainer:
         self,
     ) -> pd.DataFrame:
         """Train the classifier."""
-        _train, test = self._smiles_dataset.primary_split()
+        test = None
         all_performance = []
         for holdout_number, (sub_train, valid) in enumerate(
             self._smiles_dataset.train_split()
@@ -32,6 +32,8 @@ class Trainer:
             classifier.train(sub_train, valid, holdout_number=holdout_number, number_of_epochs=self._number_of_epochs)
             sub_train_performance = classifier.evaluate(sub_train)
             sub_valid_performance = classifier.evaluate(valid)
+            if test is None:
+                _train, test = self._smiles_dataset.primary_split()
             test_performance = classifier.evaluate(test)
             for performance, subset in [
                 (sub_train_performance, "subtrain"),

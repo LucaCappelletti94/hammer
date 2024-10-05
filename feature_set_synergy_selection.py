@@ -63,6 +63,10 @@ def compare_feature_set_synergies():
             unit="feature set",
             leave=False,
         ):
+
+            if np.isnan(train_x[first_feature_name]).any():
+                print(f"Skipping {first_feature_name} due to NaN values")
+                continue
             for second_feature_name in tqdm(
                 train_x.keys(),
                 desc=f"Evaluating synergy with {first_feature_name}",
@@ -73,6 +77,10 @@ def compare_feature_set_synergies():
                 if first_feature_name <= second_feature_name:
                     continue
             
+                if np.isnan(train_x[second_feature_name]).any():
+                    print(f"Skipping {second_feature_name} due to NaN values")
+                    continue
+
                 # For each feature set, we train a Random Forest to predict
                 # all of the multi-class labels.
                 classifier = RandomForestClassifier(

@@ -76,6 +76,10 @@ def compare_feature_sets():
                 ).any():
                     continue
 
+            if np.isnan(train_x[feature_name]).any():
+                print(f"Skipping {feature_name} due to NaN values")
+                continue
+
             # For each feature set, we train a Random Forest to predict
             # all of the multi-class labels.
             classifier = RandomForestClassifier(

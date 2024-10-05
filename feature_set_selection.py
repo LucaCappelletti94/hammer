@@ -1,5 +1,7 @@
 """Script to compare quality of different features, primarily fingerprints."""
 
+import os
+from typing import Optional
 import silence_tensorflow.auto  # pylint: disable=unused-import
 import pandas as pd
 import numpy as np
@@ -12,11 +14,48 @@ from np_classifier.training import Dataset
 
 def compare_feature_sets():
     """Compare the quality of different feature sets."""
-    dataset = Dataset()
+    dataset = Dataset(
+        include_atom_pair_fingerprint=True,
+        include_maccs_fingerprint=True,
+        include_morgan_fingerprint=True,
+        include_rdkit_fingerprint=True,
+        include_avalon_fingerprint=True,
+        include_descriptors=True,
+        include_feature_morgan_fingerprint=True,
+        include_map4_fingerprint=True,
+        include_topological_torsion_fingerprint=True,
+        include_skfp_autocorr_fingerprint=True,
+        include_skfp_avalon_fingerprint=True,
+        include_skfp_ecfp_fingerprint=True,
+        include_skfp_erg_fingerprint=True,
+        include_skfp_estate_fingerprint=True,
+        include_skfp_functional_groups_fingerprint=True,
+        include_skfp_ghose_crippen_fingerprint=True,
+        include_skfp_klekota_roth_fingerprint=True,
+        include_skfp_laggner_fingerprint=True,
+        include_skfp_layered_fingerprint=True,
+        include_skfp_lingo_fingerprint=True,
+        include_skfp_maccs_fingerprint=True,
+        include_skfp_map_fingerprint=True,
+        include_skfp_mhfp_fingerprint=True,
+        include_skfp_mqns_fingerprint=True,
+        include_skfp_pattern_fingerprint=True,
+        include_skfp_pubchem_fingerprint=True,
+        include_skfp_rdkit_2d_desc_fingerprint=True,
+        include_skfp_rdkit_fingerprint=True,
+        include_skfp_secfp_fingerprint=True,
+        include_skfp_topological_torsion_fingerprint=True,
+        include_skfp_vsa_fingerprint=True,
+    )
 
     performance = []
 
-    for (train_x, train_y), (valid_x, valid_y) in dataset.train_split(augment=False):
+    stored_performance: Optional[pd.DataFrame] = None
+
+    if os.path.exists("feature_sets_performance.csv"):
+        stored_performance = pd.read_csv("feature_sets_performance.csv")
+
+    for _, (train_x, train_y), (valid_x, valid_y) in dataset.train_split(augment=False):
         concatenated_train_y = np.hstack(list(train_y.values()))
         concatenated_valid_y = np.hstack(list(valid_y.values()))
         
@@ -31,12 +70,19 @@ def compare_feature_sets():
             unit="feature set",
             leave=False,
         ):
+            if stored_performance is not None:
+                if (
+                    stored_performance["feature_set"] == feature_name
+                ).any():
+                    continue
+
             # For each feature set, we train a Random Forest to predict
             # all of the multi-class labels.
             classifier = RandomForestClassifier(
-                n_estimators=100,
+                n_estimators=200,
+                max_depth=30,
                 n_jobs=-1,
-                verbose=1,
+                verbose=0,
             )
             classifier.fit(train_x[feature_name], concatenated_train_y)
             valid_predictions = classifier.predict(valid_x[feature_name])
@@ -67,6 +113,7 @@ def compare_feature_sets():
                 )
 
     performance = pd.DataFrame(performance)
+    performance = pd.concat([performance, stored_performance], ignore_index=True)
     performance.to_csv("feature_sets_performance.csv", index=False)
 
 

@@ -2,8 +2,8 @@
 
 import os
 import pandas as pd
-import compress_json
 from barplots import barplots
+import compress_json
 
 
 def visualize_feature_sets_performance():
@@ -13,15 +13,20 @@ def visualize_feature_sets_performance():
             "feature_sets_performance.csv not found. Run feature_set_selection.py first."
         )
 
-    # performance = pd.read_csv("feature_sets_performance.csv")
-    performance = pd.DataFrame(compress_json.load("feature_sets_performance.json"))
+    performance = pd.read_csv("feature_sets_performance.csv")
+    performance["first_feature_set"] = performance["feature_set"]
+    performance["second_feature_set"] = performance["feature_set"]
+    
+    synergy_performance = pd.DataFrame(compress_json.load("feature_set_synergy_performance.json"))
+
+    performance = pd.concat([performance, synergy_performance], ignore_index=True)
 
     barplots(
         performance,
-        path="barplots/{feature}_feature_sets.png",
-        groupby=["set", "feature_set"],
+        groupby=["first_feature_set", "set", "second_feature_set"],
         orientation="horizontal",
         height=4,
+        subplots=True,
         legend_position="lower left",
     )
 

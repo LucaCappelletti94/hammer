@@ -11,6 +11,7 @@ from tensorflow.keras.layers import (  # pylint: disable=no-name-in-module,impor
     Input,  # pylint: disable=no-name-in-module,import-error
     Dense,  # pylint: disable=no-name-in-module,import-error
     BatchNormalization,  # pylint: disable=no-name-in-module,import-error
+    LayerNormalization,  # pylint: disable=no-name-in-module,import-error
     Dropout,  # pylint: disable=no-name-in-module,import-error
     Multiply,  # pylint: disable=no-name-in-module,import-error
 )
@@ -42,7 +43,7 @@ import pandas as pd
 import compress_pickle
 from sklearn.preprocessing import RobustScaler
 from plot_keras_history import plot_history
-from extra_keras_metrics import get_standard_binary_metrics
+from extra_keras_metrics import get_minimal_multiclass_metrics
 from np_classifier.training.molecular_features import compute_features
 from np_classifier.training.exceptions import (
     UnknownPathwayNameError,
@@ -59,6 +60,7 @@ class Classifier:
         superclass_names: List[str],
         class_names: List[str],
         scalers: Dict[str, RobustScaler],
+        model_path: Optional[str] = None,
     ):
         """Initialize the classifier model."""
         # Some healthy defensive programming.
@@ -73,7 +75,10 @@ class Classifier:
         assert all(isinstance(name, str) for name in superclass_names)
         assert all(isinstance(name, str) for name in class_names)
 
-        self._model: Optional[Model] = None
+        if model_path is not None:
+            self._model = load_model(model_path)
+        else:
+            self._model: Optional[Model] = None
         self._history: Optional[pd.DataFrame] = None
         self._scalers: Dict[str, RobustScaler] = scalers
         self._pathway_names: List[str] = pathway_names
@@ -113,51 +118,30 @@ class Classifier:
     @staticmethod
     def load(model_name: str) -> "Classifier":
         """Load a classifier model from a file."""
-        all_model_data = compress_json.local_load("models.json")
-        model_data: Optional[Dict[str, str]] = None
-        for model in all_model_data:
-            if model["model_name"] == model_name:
-                model_data = model
-                break
-        if model_data is None:
-            available_model_names = [model["model_name"] for model in all_model_data]
+        all_model_url: Dict[str, str] = compress_json.local_load("models.json")
+        if model_name not in all_model_url:
             raise ValueError(
-                f"Model {model_name} not found. Available models: {available_model_names}"
+                f"Model {model_name} not found. Available models: {all_model_url.keys()}"
             )
 
         # We download the model weights and metadata from Zenodo.
         downloader = BaseDownloader()
-        model_path = f"downloads/{model_data['model_name']}.keras"
-        class_names_path = f"downloads/{model_data['model_name']}.class_names.json"
-        pathway_names_path = f"downloads/{model_data['model_name']}.pathway_names.json"
-        superclass_names_path = (
-            f"downloads/{model_data['model_name']}.superclass_names.json"
-        )
-        scalers_path = f"downloads/{model_data['model_name']}.scalers.pkl"
-        downloader.download(
-            urls=[
-                model_data["model_url"],
-                model_data["class_names"],
-                model_data["pathway_names"],
-                model_data["superclass_names"],
-                model_data["scalers"],
-            ],
-            paths=[
-                model_path,
-                class_names_path,
-                pathway_names_path,
-                superclass_names_path,
-                scalers_path,
-            ],
-        )
+        path = f"downloads/{model_name}.tar.gz"
+        downloader.download(urls=all_model_url[model_name], paths=path)
+
+        class_names_path = f"downloads/{model_name}/class_names.json"
+        pathway_names_path = f"downloads/{model_name}/pathway_names.json"
+        superclass_names_path = f"downloads/{model_name}/superclass_names.json"
+        scalers_path = f"downloads/{model_name}/scalers.pkl"
+        model_path = f"downloads/{model_name}/model.keras"
 
         classifier = Classifier(
             class_names=compress_json.load(class_names_path),
             pathway_names=compress_json.load(pathway_names_path),
             superclass_names=compress_json.load(superclass_names_path),
             scalers=compress_pickle.load(scalers_path),
+            model_path=model_path,
         )
-        classifier._model = load_model(model_path)
 
         return classifier
 
@@ -236,9 +220,9 @@ class Classifier:
         hidden = input_layer
 
         if input_layer.shape[1] == 2048:
-            hidden_sizes = 1024
+            hidden_sizes = 768
         else:
-            hidden_sizes = 256
+            hidden_sizes = 128
 
         for i in range(4):
             hidden = Dense(
@@ -247,11 +231,11 @@ class Classifier:
                 kernel_initializer=HeNormal(),
                 name=f"dense_{input_layer.name}_{i}",
             )(hidden)
-            hidden = BatchNormalization(
-                name=f"batch_normalization_{input_layer.name}_{i}"
+            hidden = LayerNormalization(
+                name=f"layer_normalization_{input_layer.name}_{i}"
             )(hidden)
+        hidden = Dropout(0.3)(hidden)
 
-        hidden = Dropout(0.6)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[Layer]) -> Layer:
@@ -259,27 +243,22 @@ class Classifier:
         hidden = Concatenate(axis=-1)(inputs)
         for i in range(4):
             hidden = Dense(
-                4096,
+                2048,
                 activation="relu",
                 kernel_initializer=HeNormal(),
                 name=f"dense_hidden_{i}",
             )(hidden)
-            hidden = BatchNormalization(
-                name=f"batch_normalization_hidden_{i}",
+            hidden = LayerNormalization(
+                name=f"layer_normalization_hidden_{i}",
             )(hidden)
-        hidden = Dropout(0.6)(hidden)
+        hidden = Dropout(0.3)(hidden)
         return hidden
 
     def _build_pathway_head(self, hidden_output: tf.Tensor) -> tf.Tensor:
         """Build the output head sub-module."""
-        number_of_pathways = len(self._pathway_names)
-        hidden = Dense(
-            1024,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            name="dense_superclass",
-        )(hidden_output)
-        return Dense(number_of_pathways, name="pathway", activation="sigmoid")(hidden)
+        return Dense(len(self._pathway_names), name="pathway", activation="sigmoid")(
+            hidden_output
+        )
 
     def _build_superclass_head(
         self,
@@ -287,28 +266,13 @@ class Classifier:
         pathway_output: tf.Tensor,
     ) -> tf.Tensor:
         """Build the output head sub-module."""
-        number_of_superclasses = len(self._superclass_names)
-        hidden = Dense(
-            1024,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            name="dense_superclass",
-        )(hidden_output)
         unharmonized_superclass_output: tf.Tensor = Dense(
-            number_of_superclasses, name="unharmonized_superclass", activation="sigmoid"
-        )(hidden)
+            len(self._superclass_names), name="unharmonized_superclass", activation="sigmoid"
+        )(hidden_output)
         # We use the pathway output and the self._pathway_to_superclass_mask to compute
         # the harmonized superclass output. We do so by multiplying the pathway output
         # by the mask, summing the results over the superclasses axes, and then multiplying
         # the result by the superclass output.
-        #
-        # The self._pathway_to_superclass_mask is a numpy ndarray with shape (number_of_pathways, number_of_superclasses),
-        # while the pathway_output is a tensor with shape (batch_size, number_of_pathways).
-        #
-        # The unharmonized_superclass_output tensor has shape (batch_size, number_of_superclasses).
-        #
-        # The weighted_superclass_mask tensor has shape (batch_size, number_of_superclasses).
-
         weighted_superclass_mask: tf.Tensor = K.sum(
             pathway_output[:, :, None] * self._pathway_to_superclass_mask[None, :, :],
             axis=1,
@@ -323,16 +287,9 @@ class Classifier:
         self, hidden_output: tf.Tensor, superclasses_output: tf.Tensor
     ) -> tf.Tensor:
         """Build the output head sub-module."""
-        number_of_classes = len(self._class_names)
-        hidden = Dense(
-            1024,
-            activation="relu",
-            kernel_initializer=HeNormal(),
-            name="dense_superclass",
-        )(hidden_output)
         unharmonized_class_output: tf.Tensor = Dense(
-            number_of_classes, name="unharmonized_class", activation="sigmoid"
-        )(hidden)
+            len(self._class_names), name="unharmonized_class", activation="sigmoid"
+        )(hidden_output)
         # We use the superclass output and the self._superclass_to_class_mask to compute
         # the harmonized class output. We do so by multiplying the superclass output
         # by the mask, summing the results over the classes axes, and then multiplying
@@ -406,11 +363,11 @@ class Classifier:
         self._build(*train)
         self._model.compile(
             optimizer=Adam(),
-            loss="binary_crossentropy",
+            loss="binary_focal_crossentropy",
             metrics={
-                "pathway": get_standard_binary_metrics(),
-                "superclass": get_standard_binary_metrics(),
-                "class": get_standard_binary_metrics(),
+                "pathway": get_minimal_multiclass_metrics(),
+                "superclass": get_minimal_multiclass_metrics(),
+                "class": get_minimal_multiclass_metrics(),
             },
         )
         plot_model(
@@ -432,7 +389,7 @@ class Classifier:
 
         model_checkpoint = ModelCheckpoint(
             model_checkpoint_path,
-            monitor="val_class_mcc",
+            monitor="val_class_AUPRC",
             save_best_only=True,
             save_weights_only=False,
             mode="auto",
@@ -441,61 +398,23 @@ class Classifier:
         )
 
         learning_rate_scheduler = ReduceLROnPlateau(
-            monitor="val_class_mcc",  # Monitor the validation loss to avoid overfitting.
-            factor=0.8,  # Reduce the learning rate by a small factor (e.g., 20%) to prevent abrupt drops.
-            patience=100,  # Wait for 20 epochs without improvement before reducing LR (long patience to allow grokking).
-            verbose=1,  # Verbose output for logging learning rate reductions.
-            mode="max",  # Minimize the validation loss.
-            min_delta=1e-4,  # Small change threshold for improvement, encouraging gradual learning.
-            cooldown=150,  # After a learning rate reduction, wait 10 epochs before resuming normal operation.
-            min_lr=1e-6,  # Set a minimum learning rate to avoid reducing it too much and stalling learning.
+            monitor="val_class_AUPRC",
+            factor=0.8,
+            patience=20,
+            verbose=1,
+            mode="max",
+            min_delta=1e-4,
+            cooldown=5,
+            min_lr=1e-6,
         )
 
         early_stopping = EarlyStopping(
-            monitor="val_class_mcc",
-            patience=500,
+            monitor="val_class_AUPRC",
+            patience=100,
             verbose=1,
             mode="max",
             restore_best_weights=True,
         )
-
-        # We compute the sample weights by combining the reciprocal of the class frequencies.
-        # We start by counting the number of samples for each class.
-        pathway_counts = train[1]["pathway"].sum(axis=0)
-        superclass_counts = train[1]["superclass"].sum(axis=0)
-        class_counts = train[1]["class"].sum(axis=0)
-
-        # We determine a sample of rarity for each sample. When a sample has multiple classes,
-        # we determine its rarity by multiplying the rarity of each class.
-        number_of_samples = train[1]["pathway"].shape[0]
-
-        pathway_sample_rarity = np.fromiter(
-            (
-                np.sum(number_of_samples / pathway_counts[sample_pathways == 1])
-                for sample_pathways in train[1]["pathway"]
-            ),
-            dtype=np.float32,
-        )
-        superclass_sample_rarity = np.fromiter(
-            (
-                np.sum(number_of_samples / superclass_counts[sample_superclasses == 1])
-                for sample_superclasses in train[1]["superclass"]
-            ),
-            dtype=np.float32,
-        )
-        class_sample_rarity = np.fromiter(
-            (
-                np.sum(number_of_samples / class_counts[sample_classes == 1])
-                for sample_classes in train[1]["class"]
-            ),
-            dtype=np.float32,
-        )
-
-        sample_weight = {
-            "pathway": pathway_sample_rarity,
-            "superclass": superclass_sample_rarity,
-            "class": class_sample_rarity,
-        }
 
         training_history = self._model.fit(
             *train,
@@ -506,12 +425,12 @@ class Classifier:
                     metrics=[
                         "loss",
                         "val_loss",
-                        "class_mcc",
-                        "val_class_mcc",
-                        "superclass_mcc",
-                        "val_superclass_mcc",
-                        "pathway_mcc",
-                        "val_pathway_mcc",
+                        "class_AUPRC",
+                        "val_class_AUPRC",
+                        "superclass_AUPRC",
+                        "val_superclass_AUPRC",
+                        "pathway_AUPRC",
+                        "val_pathway_AUPRC",
                     ],
                 ),
                 model_checkpoint,
@@ -519,7 +438,6 @@ class Classifier:
                 early_stopping,
                 learning_rate_scheduler,
             ],
-            sample_weight=sample_weight,
             batch_size=4096,
             shuffle=True,
             verbose=0,
@@ -528,7 +446,7 @@ class Classifier:
         self._history = pd.DataFrame(training_history.history)
 
         fig, _ = plot_history(
-            self._history, monitor="val_class_mcc", monitor_mode="max"
+            self._history, monitor="val_class_AUPRC", monitor_mode="max"
         )
 
         # We create a directory 'histories' if it does not exist.

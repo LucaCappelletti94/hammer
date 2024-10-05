@@ -12,6 +12,10 @@ from tqdm.auto import tqdm
 from downloaders import BaseDownloader
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
 from sklearn.preprocessing import RobustScaler
+from cache_decorator import Cache
+from rdkit.Chem import MolFromSmiles, MolToSmiles  # pylint: disable=no-name-in-module
+from rdkit.Chem.rdchem import Mol
+from rdkit.Chem import SanitizeMol  # pylint: disable=no-name-in-module
 from np_classifier.training.molecular_features import compute_features
 from np_classifier.training.augmentation_strategies import (
     StereoisomersAugmentationStrategy,
@@ -60,17 +64,17 @@ class Dataset:
         include_rdkit_fingerprint: bool = False,
         include_atom_pair_fingerprint: bool = False,
         include_topological_torsion_fingerprint: bool = False,
-        include_feature_morgan_fingerprint: bool = True,
+        include_feature_morgan_fingerprint: bool = False,
         include_avalon_fingerprint: bool = True,
         include_maccs_fingerprint: bool = True,
         include_map4_fingerprint: bool = False,
         include_descriptors: bool = True,
-        use_tautomer_augmentation_strategy: bool = True,
-        maximal_number_of_tautomers: Optional[int] = 64,
+        use_tautomer_augmentation_strategy: bool = False,
+        maximal_number_of_tautomers: Optional[int] = 16,
         use_stereoisomer_augmentation_strategy: bool = True,
-        maximal_number_of_stereoisomers: Optional[int] = 64,
+        maximal_number_of_stereoisomers: Optional[int] = 16,
         use_pickaxe_augmentation_strategy: bool = True,
-        maximal_number_of_pickaxe_molecules: Optional[int] = 256,
+        maximal_number_of_pickaxe_molecules: Optional[int] = 64,
         maximal_number_of_molecules: Optional[int] = None,
         verbose: bool = True,
     ):
@@ -143,9 +147,7 @@ class Dataset:
         )
         multi_label_smiles: List[Dict[str, Any]] = compress_json.load(
             os.path.join(local_path, "multi_label.json")
-        ) + compress_json.load(
-            os.path.join(local_path, "relabelled.json")
-        )
+        ) + compress_json.load(os.path.join(local_path, "relabelled.json"))
 
         if maximal_number_of_molecules is not None:
             assert maximal_number_of_molecules < categorical_smiles.shape[0]
@@ -305,6 +307,9 @@ class Dataset:
             for multi_label_molecule in multi_label_molecules
         ]
 
+        # We convert the smiles to molecules, sanitize them and then convert them back to SMILES.
+        assert len(self._smiles) == len(set(self._smiles)), "Duplicate SMILES found."
+
         # Next, we store the ragged lists of the pathway, superclass and class indices.
         self._pathway_indices: List[List[int]] = [
             [self._pathway_names.index(categorical_molecule.pathway_label)]
@@ -381,6 +386,9 @@ class Dataset:
         """Return the class names."""
         return self._class_names
 
+    @Cache(
+        use_approximated_hash=True,
+    )
     def augment_smiles(self, smiles: List[str]) -> List[List[str]]:
         """Returns the molecules augmented using the augmentation strategies."""
         augmented_smiles: Optional[List[List[str]]] = None
@@ -394,27 +402,21 @@ class Dataset:
         ):
             return [[] for _ in smiles]
 
-        augmentation_strategies: List[
-            Tuple[Type[AugmentationStrategy], Optional[int]]
-        ] = []
+        augmentation_strategies: List[Type[AugmentationStrategy]] = []
 
         if self._use_tautomer_augmentation_strategy:
             augmentation_strategies.append(
-                (
-                    TautomersAugmentationStrategy(),
-                    self._maximal_number_of_tautomers,
-                )
+                TautomersAugmentationStrategy(self._maximal_number_of_tautomers),
             )
 
         if self._use_stereoisomer_augmentation_strategy:
             augmentation_strategies.append(
-                (
-                    StereoisomersAugmentationStrategy(),
-                    self._maximal_number_of_stereoisomers,
-                )
+                StereoisomersAugmentationStrategy(
+                    self._maximal_number_of_stereoisomers
+                ),
             )
 
-        for strategy, maximal_number_of_smiles in tqdm(
+        for strategy in tqdm(
             augmentation_strategies,
             desc="Augmenting molecules",
             leave=False,
@@ -439,18 +441,18 @@ class Dataset:
                 pool.close()
                 pool.join()
 
-            if maximal_number_of_smiles is not None:
-                # We randomly subsample the augmented molecules.
-                for i, new_augmented in enumerate(new_augmented_smiles):
-                    if len(new_augmented) > maximal_number_of_smiles:
-                        new_augmented_smiles[i] = random.choices(
-                            new_augmented, k=maximal_number_of_smiles
-                        )
-
             if augmented_smiles is None:
                 augmented_smiles = new_augmented_smiles
             else:
-                for i, new_augmented in enumerate(new_augmented_smiles):
+                for i, new_augmented in enumerate(
+                    tqdm(
+                        new_augmented_smiles,
+                        desc=f"Extending smiles using strategy '{strategy.name()}'",
+                        leave=False,
+                        dynamic_ncols=True,
+                        disable=not self._verbose,
+                    )
+                ):
                     augmented_smiles[i].extend(
                         [
                             smile
@@ -461,51 +463,12 @@ class Dataset:
 
         # For the pickaxe strategy, we need to use the precomputed reference dataset.
         if self._use_pickaxe_augmentation_strategy:
-            downloader = BaseDownloader(auto_extract=False)
-            downloader.download(
-                "https://zenodo.org/records/13884784/files/pickaxe.json.gz?download=1",
-                "pickaxe.json.gz",
+            pickaxe_dataset: Dict[str, List[str]] = compress_json.local_load(
+                "pickaxe_normalized.json.xz"
             )
 
-            # We load the pickaxe dataset, which contains a list of dictionaries of
-            # the form (the dots are used to indicate that the SMILES have been truncated):
-            #
-            # {
-            #    "starting_compound": {
-            #        "smiles": "CC(/C=C/C=C(\\...C@H](O)[C@@H]1O",
-            #        "inchikey": "KUDWTHAWELGNGB-BGEXNNEJSA-N"
-            #    },
-            #    "product_compounds": [
-            #        {
-            #            "smiles": "CC(/C=C/C=C(\\C)C(=O)O...(O)[C@@H]1O",
-            #            "inchikey": "PTDUTNQNFDROLZ-YYIDFOSWSA-N"
-            #        },
-            #        {
-            #            "smiles": "CC(/C=C/C=C(\\C)...O)[C@@H](O)[C@@H]1O",
-            #            "inchikey": "XSTRGXQUACVSAL-JWJFTHGCSA-N"
-            #        }
-            #    ]
-            # }
-            #
-            pickaxe_dataset: List[Dict[str, Any]] = compress_json.load(
-                "pickaxe.json.gz"
-            )
-
-            # Next, we proceed to convert it into a Dictionary mapping the starting compound smiles
-            # to the list of product compounds smiles.
-            pickaxe_dict: Dict[str, List[str]] = {
-                pickaxe["starting_compound"]["smiles"]: [
-                    product["smiles"] for product in pickaxe["product_compounds"]
-                ]
-                for pickaxe in pickaxe_dataset
-            }
-
-            # We augment the smiles using the pickaxe strategy. We cannot run this in parallel
-            # using multiprocessing because that would require copying the pickaxe_dict to each
-            # process, and as this dictionary can be quite large, that would potentially consume
-            # a lot of memory.
             new_augmented_smiles: List[List[str]] = [
-                [] if smile not in pickaxe_dict else pickaxe_dict[smile]
+                [] if smile not in pickaxe_dataset else pickaxe_dataset[smile]
                 for smile in tqdm(
                     smiles,
                     desc="Augmenting using strategy 'pickaxe'",
@@ -517,7 +480,15 @@ class Dataset:
 
             if self._maximal_number_of_pickaxe_molecules is not None:
                 # We randomly subsample the augmented molecules.
-                for i, new_augmented in enumerate(new_augmented_smiles):
+                for i, new_augmented in enumerate(
+                    tqdm(
+                        new_augmented_smiles,
+                        desc="Subsampling Pickaxe molecules",
+                        leave=False,
+                        dynamic_ncols=True,
+                        disable=not self._verbose,
+                    )
+                ):
                     if len(new_augmented) > self._maximal_number_of_pickaxe_molecules:
                         new_augmented_smiles[i] = random.choices(
                             new_augmented, k=self._maximal_number_of_pickaxe_molecules
@@ -526,7 +497,15 @@ class Dataset:
             if augmented_smiles is None:
                 augmented_smiles = new_augmented_smiles
             else:
-                for i, new_augmented in enumerate(new_augmented_smiles):
+                for i, new_augmented in enumerate(
+                    tqdm(
+                        new_augmented_smiles,
+                        desc="Extending smiles using strategy 'pickaxe'",
+                        leave=False,
+                        dynamic_ncols=True,
+                        disable=not self._verbose,
+                    )
+                ):
                     augmented_smiles[i].extend(
                         [
                             smile
@@ -537,7 +516,15 @@ class Dataset:
 
         # We deduplicate the augmented molecules.
         all_smiles: Set[str] = set(smiles)
-        for i, smiles_list in enumerate(augmented_smiles):
+        for i, smiles_list in enumerate(
+            tqdm(
+                augmented_smiles,
+                desc="Deduplicating augmented smiles",
+                leave=False,
+                dynamic_ncols=True,
+                disable=not self._verbose,
+            )
+        ):
             # Since we know that the smiles that appear
             # within a single smiles list have already been
             # checked for duplicates, we can proceed list-wise.
@@ -548,6 +535,9 @@ class Dataset:
 
         return augmented_smiles
 
+    @Cache(
+        use_approximated_hash=True,
+    )
     def to_dataset(
         self,
         smiles: List[str],

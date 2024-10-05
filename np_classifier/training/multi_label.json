@@ -2206,21 +2206,6 @@
         ]
     },
     {
-        "smiles": "CCCC(=O)OCCC(C)CCC=C(C)C",
-        "pathway_labels": [
-            "Fatty acids",
-            "Terpenoids"
-        ],
-        "superclass_labels": [
-            "Monoterpenoids",
-            "Fatty esters"
-        ],
-        "class_labels": [
-            "Acyclic monoterpenoids",
-            "Wax monoesters"
-        ]
-    },
-    {
         "smiles": "CCCCCCC(=O)OC/C=C(\\C)CCC[C@H](C)CCC[C@H](C)CCCC(C)C",
         "pathway_labels": [
             "Fatty acids",
@@ -2895,21 +2880,6 @@
         ],
         "class_labels": [
             "Farnesane sesquiterpenoids",
-            "Simple coumarins"
-        ]
-    },
-    {
-        "smiles": "CC1=CC(=O)[C@@H]2C(C)(C)[C@@H](O)CC[C@@]2(C)[C@@H]1COc1ccc2ccc(=O)oc2c1",
-        "pathway_labels": [
-            "Shikimates and Phenylpropanoids",
-            "Terpenoids"
-        ],
-        "superclass_labels": [
-            "Coumarins",
-            "Sesquiterpenoids"
-        ],
-        "class_labels": [
-            "Drimane sesquiterpenoids",
             "Simple coumarins"
         ]
     },

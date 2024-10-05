@@ -65,6 +65,7 @@ setup(
         "numpy",
         "scikit-learn",
         "plot-keras-history",
+        "cache_decorator",
         "pydot",
         "extra-keras-metrics",
         "compress_pickle"

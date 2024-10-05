@@ -5,6 +5,7 @@ import numpy as np
 from rdkit.Chem import Mol  # pylint: disable=no-name-in-module
 from rdkit.Chem import MolFromSmiles  # pylint: disable=no-name-in-module
 from rdkit.Chem import MolFromSmarts  # pylint: disable=no-name-in-module
+from rdkit.Chem import SanitizeMol  # pylint: disable=no-name-in-module
 from rdkit.Chem.rdFingerprintGenerator import (  # pylint: disable=no-name-in-module
     GetMorganGenerator,  # pylint: disable=no-name-in-module
     GetRDKitFPGenerator,  # pylint: disable=no-name-in-module
@@ -38,6 +39,7 @@ from rdkit.Chem.rdMolDescriptors import (  # pylint: disable=no-name-in-module
     CalcNumHeavyAtoms,  # pylint: disable=no-name-in-module
 )
 from rdkit.Chem import GraphDescriptors  # pylint: disable=no-name-in-module
+from cache_decorator import Cache
 from map4 import MAP4
 
 SUGAR_SMARTS: List[str] = [
@@ -52,6 +54,7 @@ SUGAR_SMARTS: List[str] = [
 SUGARS: List[Mol] = [MolFromSmarts(sugar) for sugar in SUGAR_SMARTS]
 
 
+@Cache()
 def compute_features(
     smile: str,
     radius: int = 3,
@@ -97,6 +100,7 @@ def compute_features(
     """
     features = {}
     molecule = MolFromSmiles(smile)
+    SanitizeMol(molecule)
     molecule_with_hydrogens = AddHs(molecule)
 
     if include_morgan_fingerprint:

@@ -2,6 +2,7 @@
 
 from typing import List, Dict
 import numpy as np
+import compress_json
 from rdkit.Chem import Mol  # pylint: disable=no-name-in-module
 from rdkit.Chem import MolFromSmiles  # pylint: disable=no-name-in-module
 from rdkit.Chem import MolFromSmarts  # pylint: disable=no-name-in-module
@@ -39,69 +40,135 @@ from rdkit.Chem.rdMolDescriptors import (  # pylint: disable=no-name-in-module
     CalcNumHeavyAtoms,  # pylint: disable=no-name-in-module
 )
 from rdkit.Chem import GraphDescriptors  # pylint: disable=no-name-in-module
-from cache_decorator import Cache
+from skfp.fingerprints.autocorr import AutocorrFingerprint
+from skfp.fingerprints.avalon import AvalonFingerprint
+from skfp.fingerprints.ecfp import ECFPFingerprint
+from skfp.fingerprints.erg import ERGFingerprint
+from skfp.fingerprints.estate import EStateFingerprint
+from skfp.fingerprints.functional_groups import FunctionalGroupsFingerprint
+from skfp.fingerprints.ghose_crippen import GhoseCrippenFingerprint
+from skfp.fingerprints.klekota_roth import KlekotaRothFingerprint
+from skfp.fingerprints.laggner import LaggnerFingerprint
+from skfp.fingerprints.layered import LayeredFingerprint
+from skfp.fingerprints.lingo import LingoFingerprint
+from skfp.fingerprints.maccs import MACCSFingerprint
+from skfp.fingerprints.map import MAPFingerprint
+from skfp.fingerprints.mhfp import MHFPFingerprint
+from skfp.fingerprints.mordred_fp import MordredFingerprint
+from skfp.fingerprints.mqns import MQNsFingerprint
+from skfp.fingerprints.pattern import PatternFingerprint
+from skfp.fingerprints.pharmacophore import PharmacophoreFingerprint
+from skfp.fingerprints.pubchem import PubChemFingerprint
+from skfp.fingerprints.rdkit_2d_desc import RDKit2DDescriptorsFingerprint
+from skfp.fingerprints.rdkit_fp import RDKitFingerprint
+from skfp.fingerprints.secfp import SECFPFingerprint
+from skfp.fingerprints.topological_torsion import TopologicalTorsionFingerprint
+from skfp.fingerprints.vsa import VSAFingerprint
+
 from map4 import MAP4
 
-SUGAR_SMARTS: List[str] = [
-    "[OX2;$([r5]1@C@C@C(O)@C1),$([r6]1@C@C@C(O)@C(O)@C1)]",
-    "[OX2;$([r5]1@C(!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C1),$([r6]1@C(!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C@C1)]",
-    "[OX2;$([r5]1@C(!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C(O)@C1),$([r6]1@C(!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C(O)@C(O)@C1)]",
-    "[OX2;$([r5]1@C(!@[OX2H1])@C@C@C1),$([r6]1@C(!@[OX2H1])@C@C@C@C1)]",
-    "[OX2;$([r5]1@[C@@](!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C1),$([r6]1@[C@@](!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C@C1)]",
-    "[OX2;$([r5]1@[C@](!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C1),$([r6]1@[C@](!@[OX2,NX3,SX2,FX1,ClX1,BrX1,IX1])@C@C@C@C1)]",
-]
-
+SUGAR_SMARTS: List[str] = compress_json.local_load("sugar_smarts.json")
 SUGARS: List[Mol] = [MolFromSmarts(sugar) for sugar in SUGAR_SMARTS]
 
 
-@Cache()
 def compute_features(
     smile: str,
     radius: int = 3,
     n_bits: int = 2048,
-    include_morgan_fingerprint: bool = True,
-    include_rdkit_fingerprint: bool = True,
-    include_atom_pair_fingerprint: bool = True,
-    include_topological_torsion_fingerprint: bool = True,
-    include_feature_morgan_fingerprint: bool = True,
-    include_avalon_fingerprint: bool = True,
-    include_maccs_fingerprint: bool = True,
-    include_map4_fingerprint: bool = True,
-    include_descriptors: bool = True,
+    include_morgan_fingerprint: bool = False,
+    include_rdkit_fingerprint: bool = False,
+    include_atom_pair_fingerprint: bool = False,
+    include_topological_torsion_fingerprint: bool = False,
+    include_feature_morgan_fingerprint: bool = False,
+    include_avalon_fingerprint: bool = False,
+    include_maccs_fingerprint: bool = False,
+    include_map4_fingerprint: bool = False,
+    include_skfp_autocorr_fingerprint: bool = False,
+    include_skfp_avalon_fingerprint: bool = False,
+    include_skfp_ecfp_fingerprint: bool = False,
+    include_skfp_erg_fingerprint: bool = False,
+    include_skfp_estate_fingerprint: bool = False,
+    include_skfp_functional_groups_fingerprint: bool = False,
+    include_skfp_ghose_crippen_fingerprint: bool = False,
+    include_skfp_klekota_roth_fingerprint: bool = False,
+    include_skfp_laggner_fingerprint: bool = False,
+    include_skfp_layered_fingerprint: bool = False,
+    include_skfp_lingo_fingerprint: bool = False,
+    include_skfp_maccs_fingerprint: bool = False,
+    include_skfp_map_fingerprint: bool = False,
+    include_skfp_mhfp_fingerprint: bool = False,
+    include_skfp_mordred_fingerprint: bool = False,
+    include_skfp_mqns_fingerprint: bool = False,
+    include_skfp_pattern_fingerprint: bool = False,
+    include_skfp_pharmacophore_fingerprint: bool = False,
+    include_skfp_pubchem_fingerprint: bool = False,
+    include_skfp_rdkit_2d_desc_fingerprint: bool = False,
+    include_skfp_rdkit_fingerprint: bool = False,
+    include_skfp_secfp_fingerprint: bool = False,
+    include_skfp_topological_torsion_fingerprint: bool = False,
+    include_skfp_vsa_fingerprint: bool = False,
+    include_descriptors: bool = False,
 ) -> Dict[str, np.ndarray]:
-    """Return a complete set of fingerprints and descriptors.
-
-    Parameters
-    ----------
-    smile : str
-        The SMILES of the molecule.
-    radius : int
-        The radius of the Morgan fingerprint.
-    n_bits : int
-        The number of bits of the fingerprints.
-    include_morgan_fingerprint : bool
-        Whether to include the Morgan fingerprint.
-    include_rdkit_fingerprint : bool
-        Whether to include the RDKit fingerprint.
-    include_atom_pair_fingerprint : bool
-        Whether to include the Atom Pair fingerprint.
-    include_topological_torsion_fingerprint : bool
-        Whether to include the Topological Torsion fingerprint.
-    include_feature_morgan_fingerprint : bool
-        Whether to include the Feature Morgan fingerprint.
-    include_avalon_fingerprint : bool
-        Whether to include the Avalon fingerprint.
-    include_maccs_fingerprint : bool
-        Whether to include the MACCS fingerprint.
-    include_map4_fingerprint : bool
-        Whether to include the MAP4 fingerprint.
-    include_descriptors : bool
-        Whether to include the molecular descriptors.
-    """
+    """Return a complete set of fingerprints and descriptors."""
     features = {}
     molecule = MolFromSmiles(smile)
     SanitizeMol(molecule)
     molecule_with_hydrogens = AddHs(molecule)
+
+    # We zip the SKFP fingerprints with their class
+    for include_fp, fp_name, fp_class in [
+        (include_skfp_autocorr_fingerprint, "autocorr", AutocorrFingerprint),
+        (include_skfp_avalon_fingerprint, "avalon", AvalonFingerprint),
+        (include_skfp_ecfp_fingerprint, "ecfp", ECFPFingerprint),
+        (include_skfp_erg_fingerprint, "erg", ERGFingerprint),
+        (include_skfp_estate_fingerprint, "estate", EStateFingerprint),
+        (
+            include_skfp_functional_groups_fingerprint,
+            "functional_groups",
+            FunctionalGroupsFingerprint,
+        ),
+        (
+            include_skfp_ghose_crippen_fingerprint,
+            "ghose_crippen",
+            GhoseCrippenFingerprint,
+        ),
+        (
+            include_skfp_klekota_roth_fingerprint,
+            "klekota_roth",
+            KlekotaRothFingerprint,
+        ),
+        (include_skfp_laggner_fingerprint, "laggner", LaggnerFingerprint),
+        (include_skfp_layered_fingerprint, "layered", LayeredFingerprint),
+        (include_skfp_lingo_fingerprint, "lingo", LingoFingerprint),
+        (include_skfp_maccs_fingerprint, "maccs", MACCSFingerprint),
+        (include_skfp_map_fingerprint, "map", MAPFingerprint),
+        (include_skfp_mhfp_fingerprint, "mhfp", MHFPFingerprint),
+        (include_skfp_mordred_fingerprint, "mordred_fp", MordredFingerprint),
+        (include_skfp_mqns_fingerprint, "mqns", MQNsFingerprint),
+        (include_skfp_pattern_fingerprint, "pattern", PatternFingerprint),
+        (
+            include_skfp_pharmacophore_fingerprint,
+            "pharmacophore",
+            PharmacophoreFingerprint,
+        ),
+        (include_skfp_pubchem_fingerprint, "pubchem", PubChemFingerprint),
+        (
+            include_skfp_rdkit_2d_desc_fingerprint,
+            "rdkit_2d_desc",
+            RDKit2DDescriptorsFingerprint,
+        ),
+        (include_skfp_rdkit_fingerprint, "rdkit", RDKitFingerprint),
+        (include_skfp_secfp_fingerprint, "secfp", SECFPFingerprint),
+        (
+            include_skfp_topological_torsion_fingerprint,
+            "topological_torsion",
+            TopologicalTorsionFingerprint,
+        ),
+        (include_skfp_vsa_fingerprint, "vsa", VSAFingerprint),
+    ]:
+        if include_fp:
+            skfp_fingerprint = fp_class()
+            features[f"{fp_name}_skfp_fingerprint"] = skfp_fingerprint.transform([molecule_with_hydrogens])[0]
 
     if include_morgan_fingerprint:
         morgan_fingerprint_generator = GetMorganGenerator(radius=radius, fpSize=n_bits)
@@ -137,7 +204,9 @@ def compute_features(
             )
         )
 
-        features["topological_torsion_fingerprint"] = topological_torsion_fingerprint.astype(np.uint8)
+        features["topological_torsion_fingerprint"] = (
+            topological_torsion_fingerprint.astype(np.uint8)
+        )
 
     if include_feature_morgan_fingerprint:
         feature_morgan_fingerprint_generator = GetMorganGenerator(
@@ -151,7 +220,9 @@ def compute_features(
             )
         )
 
-        features["feature_morgan_fingerprint"] = feature_morgan_fingerprint.astype(np.uint8)
+        features["feature_morgan_fingerprint"] = feature_morgan_fingerprint.astype(
+            np.uint8
+        )
 
     if include_avalon_fingerprint:
         # We proceed generating the Avalon fingerprints

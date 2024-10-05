@@ -1,6 +1,7 @@
 """Executor to visualize the features."""
 
 import os
+from collections import Counter
 from multiprocessing import cpu_count
 import silence_tensorflow.auto  # pylint: disable=unused-import
 import numpy as np
@@ -14,9 +15,44 @@ from np_classifier.training import Dataset
 
 def visualize():
     """Train the model."""
-    dataset = Dataset()
+    dataset = Dataset(
+        include_atom_pair_fingerprint=True,
+        include_maccs_fingerprint=True,
+        include_morgan_fingerprint=True,
+        include_rdkit_fingerprint=True,
+        include_avalon_fingerprint=True,
+        include_descriptors=True,
+        include_feature_morgan_fingerprint=True,
+        include_map4_fingerprint=True,
+        include_topological_torsion_fingerprint=True,
+        include_skfp_autocorr_fingerprint=True,
+        include_skfp_avalon_fingerprint=True,
+        include_skfp_ecfp_fingerprint=True,
+        include_skfp_erg_fingerprint=True,
+        include_skfp_estate_fingerprint=True,
+        include_skfp_functional_groups_fingerprint=True,
+        include_skfp_ghose_crippen_fingerprint=True,
+        include_skfp_klekota_roth_fingerprint=True,
+        include_skfp_laggner_fingerprint=True,
+        include_skfp_layered_fingerprint=True,
+        include_skfp_lingo_fingerprint=True,
+        include_skfp_maccs_fingerprint=True,
+        include_skfp_map_fingerprint=True,
+        include_skfp_mhfp_fingerprint=True,
+        include_skfp_mqns_fingerprint=True,
+        include_skfp_pattern_fingerprint=True,
+        include_skfp_pubchem_fingerprint=True,
+        include_skfp_rdkit_2d_desc_fingerprint=True,
+        include_skfp_rdkit_fingerprint=True,
+        include_skfp_secfp_fingerprint=True,
+        include_skfp_topological_torsion_fingerprint=True,
+        include_skfp_vsa_fingerprint=True,
+    )
     # We compute the features without augmentation
-    _scalers, (train_x, train_y) = dataset.to_dataset(dataset.training_molecules)
+    _scalers, (train_x, train_y), _ = dataset.primary_split(augment=False)
+
+    assert len(train_x) > 0
+    assert len(train_y) > 0
 
     # Since we can't possibly show all of the superclasses and classes,
     # we will only show the top 'number of colors' of each. Some samples will have multiple
@@ -25,20 +61,25 @@ def visualize():
     colors = list(TABLEAU_COLORS.values())
     number_of_colors = len(colors)
 
-    pathway_counts = dataset.training_pathway_counts()
-    superclass_counts = dataset.training_superclass_counts()
-    class_counts = dataset.training_class_counts()
+    counters = {}
+
+    for key, labels in train_y.items():
+        counters[key] = Counter()
+        for label in labels:
+            for i, bit in enumerate(label):
+                if bit == 1:
+                    counters[key].update([dataset.pathway_names[i]])
 
     # We determine the top 'number_of_colors - 1' most common pathways, superclasses and classes
     top_pathways = sorted(
-        pathway_counts, key=lambda x: pathway_counts[x], reverse=True
+        counters["pathway"], key=lambda x: counters["pathway"][x], reverse=True
     )[: number_of_colors - 1]
     top_superclasses = sorted(
-        superclass_counts, key=lambda x: superclass_counts[x], reverse=True
+        counters["superclass"], key=lambda x: counters["superclass"][x], reverse=True
     )[: number_of_colors - 1]
-    top_classes = sorted(class_counts, key=lambda x: class_counts[x], reverse=True)[
-        : number_of_colors - 1
-    ]
+    top_classes = sorted(
+        counters["class"], key=lambda x: counters["class"][x], reverse=True
+    )[: number_of_colors - 1]
 
     # Plus one for "Other"
     top_pathways.append("Other")
@@ -50,38 +91,41 @@ def visualize():
     most_common_pathways = []
     most_common_superclasses = []
     most_common_classes = []
-    for molecule in tqdm(
-        dataset.training_molecules,
-        desc="Determining most common labels",
-        total=len(dataset.training_molecules),
-        unit="molecule",
-        leave=False,
-        dynamic_ncols=True,
-    ):
-        most_common_pathway = molecule.most_common_pathway_label_name(pathway_counts)
-        most_common_superclass = molecule.most_common_superclass_label_name(
-            superclass_counts
-        )
-        most_common_class = molecule.most_common_class_label_name(class_counts)
+    for labels, counter, label_names, most_common in [
+        (
+            train_y["pathway"],
+            counters["pathway"],
+            dataset.pathway_names,
+            most_common_pathways,
+        ),
+        (
+            train_y["superclass"],
+            counters["superclass"],
+            dataset.superclass_names,
+            most_common_superclasses,
+        ),
+        (
+            train_y["class"],
+            counters["class"],
+            dataset.class_names,
+            most_common_classes,
+        ),
+    ]:
+        for one_hot_encoded_y in labels:
+            most_common_label = None
+            most_common_count = 0
+            for bit, label_name in zip(one_hot_encoded_y, label_names):
+                if bit == 1 and counter[label_name] > most_common_count:
+                    most_common_label = label_name
+                    most_common_count = counter[label_name]
 
-        try:
-            most_common_pathway_index = top_pathways.index(most_common_pathway)
-        except ValueError:
-            most_common_pathway_index = number_of_colors - 1
-        try:
-            most_common_superclass_index = top_superclasses.index(
-                most_common_superclass
-            )
-        except ValueError:
-            most_common_superclass_index = number_of_colors - 1
-        try:
-            most_common_class_index = top_classes.index(most_common_class)
-        except ValueError:
-            most_common_class_index = number_of_colors - 1
+            assert most_common_label is not None
 
-        most_common_pathways.append(most_common_pathway_index)
-        most_common_superclasses.append(most_common_superclass_index)
-        most_common_classes.append(most_common_class_index)
+            try:
+                most_common_index = top_pathways.index(most_common_label)
+            except ValueError:
+                most_common_index = number_of_colors - 1
+            most_common.append(most_common_index)
 
     most_common_pathways = np.array(most_common_pathways)
     most_common_superclasses = np.array(most_common_superclasses)
@@ -99,6 +143,11 @@ def visualize():
         leave=False,
         dynamic_ncols=True,
     ):
+        path = f"data_visualizations/{feature_set_name}.png"
+
+        if os.path.exists(path):
+            continue
+
         pca = PCA(n_components=50)
         tsne = MulticoreTSNE(n_components=2, n_jobs=cpu_count(), verbose=1)
 
@@ -150,7 +199,7 @@ def visualize():
         plt.tight_layout()
 
         os.makedirs("data_visualizations", exist_ok=True)
-        fig.savefig(f"data_visualizations/{feature_set_name}.png")
+        fig.savefig(path)
         plt.close()
 
 

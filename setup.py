@@ -67,6 +67,7 @@ setup(
         "plot-keras-history",
         "cache_decorator",
         "pydot",
+        "scikit-fingerprints",
         "extra-keras-metrics",
         "compress_pickle"
     ],

@@ -9,13 +9,9 @@ import compress_json
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
-from downloaders import BaseDownloader
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
 from sklearn.preprocessing import RobustScaler
 from cache_decorator import Cache
-from rdkit.Chem import MolFromSmiles, MolToSmiles  # pylint: disable=no-name-in-module
-from rdkit.Chem.rdchem import Mol
-from rdkit.Chem import SanitizeMol  # pylint: disable=no-name-in-module
 from np_classifier.training.molecular_features import compute_features
 from np_classifier.training.augmentation_strategies import (
     StereoisomersAugmentationStrategy,
@@ -27,30 +23,20 @@ from np_classifier.training.augmentation_strategies import (
 def _get_features(smiles_and_kwargs: (str, Dict[str, Any])) -> Dict[str, np.ndarray]:
     """Return the fingerprints of a Molecule."""
     smiles, kwargs = smiles_and_kwargs
-    return compute_features(smiles, **kwargs)
+
+    assert any(param for param in kwargs.values()), "No features are selected."
+
+    x = compute_features(smiles, **kwargs)
+
+    assert len(x) == sum(
+        int(value) for value in kwargs.values() if isinstance(value, bool)
+    ), "Incorrect number of features."
+
+    return x
 
 
 class Dataset:
     """Class handling the dataset for training."""
-
-    # List of UNIQUE pathway names, sorted alphabetically.
-    _pathway_names: List[str]
-    # List of UNIQUE superclass names, sorted alphabetically.
-    _superclass_names: List[str]
-    # List of UNIQUE class names, sorted alphabetically.
-    _class_names: List[str]
-    # The indices of the molecules in the COMPLETE training set.
-    _train_indices: np.ndarray
-    # The indices of the molecules in the test set.
-    _test_indices: np.ndarray
-    # Smiles in the COMPLETE dataset, including both the COMPLETE training and test sets.
-    _smiles: List[str]
-    # Ragged list of the pathway indices in the COMPLETE dataset.
-    _pathway_indices: List[List[int]]
-    # Ragged list of the superclass indices in the COMPLETE dataset.
-    _superclass_indices: List[List[int]]
-    # Ragged list of the class indices in the COMPLETE dataset.
-    _class_indices: List[List[int]]
 
     def __init__(
         self,
@@ -65,10 +51,34 @@ class Dataset:
         include_atom_pair_fingerprint: bool = False,
         include_topological_torsion_fingerprint: bool = False,
         include_feature_morgan_fingerprint: bool = False,
-        include_avalon_fingerprint: bool = True,
-        include_maccs_fingerprint: bool = True,
+        include_avalon_fingerprint: bool = False,
+        include_maccs_fingerprint: bool = False,
         include_map4_fingerprint: bool = False,
-        include_descriptors: bool = True,
+        include_descriptors: bool = False,
+        include_skfp_autocorr_fingerprint: bool = False,
+        include_skfp_avalon_fingerprint: bool = False,
+        include_skfp_ecfp_fingerprint: bool = False,
+        include_skfp_erg_fingerprint: bool = False,
+        include_skfp_estate_fingerprint: bool = False,
+        include_skfp_functional_groups_fingerprint: bool = False,
+        include_skfp_ghose_crippen_fingerprint: bool = False,
+        include_skfp_klekota_roth_fingerprint: bool = False,
+        include_skfp_laggner_fingerprint: bool = False,
+        include_skfp_layered_fingerprint: bool = False,
+        include_skfp_lingo_fingerprint: bool = False,
+        include_skfp_maccs_fingerprint: bool = False,
+        include_skfp_map_fingerprint: bool = False,
+        include_skfp_mhfp_fingerprint: bool = False,
+        include_skfp_mordred_fingerprint: bool = False,
+        include_skfp_mqns_fingerprint: bool = False,
+        include_skfp_pattern_fingerprint: bool = False,
+        include_skfp_pharmacophore_fingerprint: bool = False,
+        include_skfp_pubchem_fingerprint: bool = False,
+        include_skfp_rdkit_2d_desc_fingerprint: bool = False,
+        include_skfp_rdkit_fingerprint: bool = False,
+        include_skfp_secfp_fingerprint: bool = False,
+        include_skfp_topological_torsion_fingerprint: bool = False,
+        include_skfp_vsa_fingerprint: bool = False,
         use_tautomer_augmentation_strategy: bool = False,
         maximal_number_of_tautomers: Optional[int] = 16,
         use_stereoisomer_augmentation_strategy: bool = True,
@@ -78,76 +88,14 @@ class Dataset:
         maximal_number_of_molecules: Optional[int] = None,
         verbose: bool = True,
     ):
-        """Initialize the SMILES dataset.
-
-        Parameters
-        ----------
-        random_state : int
-            The random state to use for the train/test/validation splits.
-        number_of_splits : int
-            The number of splits to use for the validation set.
-        validation_size : float
-            The size of the validation set.
-        test_size : float
-            The size of the test set.
-        radius : int
-            The radius of the fingerprint.
-        n_bits : int
-            The number of bits in the fingerprint.
-        include_morgan_fingerprint : bool
-            Whether to include the Morgan fingerprint.
-        include_rdkit_fingerprint : bool
-            Whether to include the RDKit fingerprint.
-        include_atom_pair_fingerprint : bool
-            Whether to include the atom pair fingerprint.
-        include_topological_torsion_fingerprint : bool
-            Whether to include the topological torsion fingerprint.
-        include_feature_morgan_fingerprint : bool
-            Whether to include the feature Morgan fingerprint.
-        include_avalon_fingerprint : bool
-            Whether to include the Avalon fingerprint.
-        include_maccs_fingerprint : bool
-            Whether to include the MACCS fingerprint.
-        include_map4_fingerprint : bool
-            Whether to include the MAP4 fingerprint.
-        include_descriptors : bool
-            Whether to include the descriptors.
-        use_tautomer_augmentation_strategy : bool
-            Whether to use the tautomer augmentation strategy,
-            which generates tautomers of the molecules starting
-            from the SMILES.
-        maximal_number_of_tauomers : Optional[int]
-            The maximal number of tautomers to use.
-            If None, all the tautomers identified are used.
-        use_stereoisomer_augmentation_strategy : bool
-            Whether to use the stereoisomer augmentation strategy,
-            which generates stereoisomers of the molecules starting
-            from the SMILES.
-        maximal_number_of_stereoisomers : Optional[int]
-            The maximal number of stereoisomers to use.
-            If None, all the stereoisomers identified are used.
-        use_pickaxe_augmentation_strategy : bool
-            Whether to use the pickaxe augmentation strategy,
-            which generates molecules by breaking bonds in the
-            molecules starting from the SMILES, using the precomputed
-            reference dataset.
-        maximal_number_of_pickaxe_molecules : Optional[int]
-            The maximal number of molecules to use.
-            If None, all the molecules identified are used.
-        maximal_number_of_molecules : Optional[int]
-            The maximal number of molecules to use.
-            This is primarily used for testing.
-            By default, all the molecules are used.
-        verbose : bool
-            Whether to display progress bars.
-        """
+        """Initialize the SMILES dataset."""
         local_path = os.path.dirname(os.path.abspath(__file__))
         categorical_smiles: pd.DataFrame = pd.read_csv(
             os.path.join(local_path, "categorical.csv.gz")
         )
-        multi_label_smiles: List[Dict[str, Any]] = compress_json.load(
-            os.path.join(local_path, "multi_label.json")
-        ) + compress_json.load(os.path.join(local_path, "relabelled.json"))
+        multi_label_smiles: List[Dict[str, Any]] = compress_json.local_load(
+            "multi_label.json"
+        ) + compress_json.local_load("relabelled.json")
 
         if maximal_number_of_molecules is not None:
             assert maximal_number_of_molecules < categorical_smiles.shape[0]
@@ -359,6 +307,30 @@ class Dataset:
             "include_avalon_fingerprint": include_avalon_fingerprint,
             "include_maccs_fingerprint": include_maccs_fingerprint,
             "include_map4_fingerprint": include_map4_fingerprint,
+            "include_skfp_autocorr_fingerprint": include_skfp_autocorr_fingerprint,
+            "include_skfp_avalon_fingerprint": include_skfp_avalon_fingerprint,
+            "include_skfp_ecfp_fingerprint": include_skfp_ecfp_fingerprint,
+            "include_skfp_erg_fingerprint": include_skfp_erg_fingerprint,
+            "include_skfp_estate_fingerprint": include_skfp_estate_fingerprint,
+            "include_skfp_functional_groups_fingerprint": include_skfp_functional_groups_fingerprint,
+            "include_skfp_ghose_crippen_fingerprint": include_skfp_ghose_crippen_fingerprint,
+            "include_skfp_klekota_roth_fingerprint": include_skfp_klekota_roth_fingerprint,
+            "include_skfp_laggner_fingerprint": include_skfp_laggner_fingerprint,
+            "include_skfp_layered_fingerprint": include_skfp_layered_fingerprint,
+            "include_skfp_lingo_fingerprint": include_skfp_lingo_fingerprint,
+            "include_skfp_maccs_fingerprint": include_skfp_maccs_fingerprint,
+            "include_skfp_map_fingerprint": include_skfp_map_fingerprint,
+            "include_skfp_mhfp_fingerprint": include_skfp_mhfp_fingerprint,
+            "include_skfp_mordred_fingerprint": include_skfp_mordred_fingerprint,
+            "include_skfp_mqns_fingerprint": include_skfp_mqns_fingerprint,
+            "include_skfp_pattern_fingerprint": include_skfp_pattern_fingerprint,
+            "include_skfp_pharmacophore_fingerprint": include_skfp_pharmacophore_fingerprint,
+            "include_skfp_pubchem_fingerprint": include_skfp_pubchem_fingerprint,
+            "include_skfp_rdkit_2d_desc_fingerprint": include_skfp_rdkit_2d_desc_fingerprint,
+            "include_skfp_rdkit_fingerprint": include_skfp_rdkit_fingerprint,
+            "include_skfp_secfp_fingerprint": include_skfp_secfp_fingerprint,
+            "include_skfp_topological_torsion_fingerprint": include_skfp_topological_torsion_fingerprint,
+            "include_skfp_vsa_fingerprint": include_skfp_vsa_fingerprint,
             "include_descriptors": include_descriptors,
         }
 
@@ -386,9 +358,6 @@ class Dataset:
         """Return the class names."""
         return self._class_names
 
-    @Cache(
-        use_approximated_hash=True,
-    )
     def augment_smiles(self, smiles: List[str]) -> List[List[str]]:
         """Returns the molecules augmented using the augmentation strategies."""
         augmented_smiles: Optional[List[List[str]]] = None
@@ -467,32 +436,30 @@ class Dataset:
                 "pickaxe_normalized.json.xz"
             )
 
-            new_augmented_smiles: List[List[str]] = [
-                [] if smile not in pickaxe_dataset else pickaxe_dataset[smile]
-                for smile in tqdm(
-                    smiles,
-                    desc="Augmenting using strategy 'pickaxe'",
-                    leave=False,
-                    dynamic_ncols=True,
-                    disable=not self._verbose,
-                )
-            ]
-
-            if self._maximal_number_of_pickaxe_molecules is not None:
-                # We randomly subsample the augmented molecules.
-                for i, new_augmented in enumerate(
-                    tqdm(
-                        new_augmented_smiles,
-                        desc="Subsampling Pickaxe molecules",
-                        leave=False,
-                        dynamic_ncols=True,
-                        disable=not self._verbose,
-                    )
-                ):
-                    if len(new_augmented) > self._maximal_number_of_pickaxe_molecules:
-                        new_augmented_smiles[i] = random.choices(
-                            new_augmented, k=self._maximal_number_of_pickaxe_molecules
+            new_augmented_smiles: List[List[str]] = []
+            for smile in tqdm(
+                smiles,
+                desc="Augmenting using strategy 'pickaxe'",
+                leave=False,
+                dynamic_ncols=True,
+                disable=not self._verbose,
+            ):
+                if smile in pickaxe_dataset:
+                    associated_smiles: List[str] = pickaxe_dataset[smile]
+                    if (
+                        len(associated_smiles)
+                        > self._maximal_number_of_pickaxe_molecules
+                    ):
+                        new_augmented_smiles.append(
+                            random.choices(
+                                associated_smiles,
+                                k=self._maximal_number_of_pickaxe_molecules,
+                            )
                         )
+                    else:
+                        new_augmented_smiles.append(associated_smiles)
+                else:
+                    new_augmented_smiles.append([])
 
             if augmented_smiles is None:
                 augmented_smiles = new_augmented_smiles
@@ -525,11 +492,8 @@ class Dataset:
                 disable=not self._verbose,
             )
         ):
-            # Since we know that the smiles that appear
-            # within a single smiles list have already been
-            # checked for duplicates, we can proceed list-wise.
             augmented_smiles[i] = [
-                smile for smile in smiles_list if smile not in all_smiles
+                smile for smile in set(smiles_list) if smile not in all_smiles
             ]
             all_smiles.update(augmented_smiles[i])
 
@@ -564,6 +528,16 @@ class Dataset:
         number_of_molecules = len(smiles)
         # We compute the features of the first molecule to determine the shape of the features.
         first_smile_features = compute_features(smiles[0], **self._features_kwargs)
+
+        assert len(first_smile_features) > 0, "No features are computed."
+        expected_number_of_features = sum(
+            int(value)
+            for value in self._features_kwargs.values()
+            if isinstance(value, bool)
+        )
+        assert (
+            len(first_smile_features) == expected_number_of_features
+        ), f"Incorrect number of features {len(first_smile_features)}, expected {expected_number_of_features}"
 
         # We allocate the arrays to store the features.
         features = {

@@ -205,7 +205,7 @@
         ]
     },
     {
-        "smiles": "C[C@H](NC(=O)[C@@H](NC(=O)[C@H](CCCCN)NC(=O)[C@H](C)NC(=O)[C@H](CS)NC(=O)CNC(=O)[C@@H]1CCCN1C(=O)[C@@H](NC(=O)[C@H](CS)NC(=O)[C@H](Cc1ccccc1)NC(=O)[C@H](CO)NC(=O)[C@H](Cc1c[nH]c2ccccc12)NC(=O)[C@H](CO)NC(=O)[C@H](CCCCN)NC(=O)[C@@H](N)Cc1ccccc1)[C@@H](C)O)[C@@H](C)O)C(=O)N[C@@H](CO)C(=O)N[C@@H](Cc1ccccc1)C(=O)N[C@@H](CC(N)=O)C(=O)N[C@@H](CO)C(=O)N[C@@H](Cc1ccc(O)cc1)C(=O)N[C@@H](CS)C(=O)N[C@@H](CS)C(=O)O",
+        "smiles": "C[C@H](NC(=O)[C@H](CS)NC(=O)CNC(=O)[C@@H]1CCCN1C(=O)[C@@H](NC(=O)[C@H](CS)NC(=O)[C@H](Cc1ccccc1)NC(=O)[C@H](CO)NC(=O)[C@H](Cc1c[nH]c2ccccc12)NC(=O)[C@H](CO)NC(=O)[C@H](CCCCN)NC(=O)[C@@H](N)Cc1ccccc1)[C@@H](C)O)C(=O)N[C@@H](CCCCN)C(=O)N[C@H](C(=O)N[C@@H](C)C(=O)N[C@@H](CO)C(=O)N[C@@H](Cc1ccccc1)C(=O)N[C@@H](CC(N)=O)C(=O)N[C@@H](CO)C(=O)N[C@@H](Cc1ccc(O)cc1)C(=O)N[C@@H](CS)C(=O)N[C@@H](CS)C(=O)O)[C@@H](C)O",
         "pathway_labels": [
             "Amino acids and Peptides"
         ],

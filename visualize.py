@@ -96,24 +96,27 @@ def visualize():
     most_common_pathways = []
     most_common_superclasses = []
     most_common_classes = []
-    for labels, counter, label_names, most_common in [
+    for labels, counter, label_names, most_common, top in [
         (
             train_y["pathway"],
             counters["pathway"],
             dataset.pathway_names,
             most_common_pathways,
+            top_pathways,
         ),
         (
             train_y["superclass"],
             counters["superclass"],
             dataset.superclass_names,
             most_common_superclasses,
+            top_superclasses,
         ),
         (
             train_y["class"],
             counters["class"],
             dataset.class_names,
             most_common_classes,
+            top_classes,
         ),
     ]:
         for one_hot_encoded_y in labels:
@@ -127,7 +130,7 @@ def visualize():
             assert most_common_label is not None
 
             try:
-                most_common_index = top_pathways.index(most_common_label)
+                most_common_index = top.index(most_common_label)
             except ValueError:
                 most_common_index = number_of_colors - 1
             most_common.append(most_common_index)
@@ -151,6 +154,10 @@ def visualize():
         path = f"data_visualizations/{feature_set_name}.png"
 
         if os.path.exists(path):
+            continue
+
+        if np.isnan(features).any():
+            print(f"Skipping {feature_set_name} due to NaN values")
             continue
 
         pca = PCA(n_components=50)

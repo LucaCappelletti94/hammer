@@ -68,7 +68,12 @@ def visualize():
         for label in labels:
             for i, bit in enumerate(label):
                 if bit == 1:
-                    counters[key].update([dataset.pathway_names[i]])
+                    if key == "pathway":
+                        counters[key].update([dataset.pathway_names[i]])
+                    elif key == "superclass":
+                        counters[key].update([dataset.superclass_names[i]])
+                    elif key == "class":
+                        counters[key].update([dataset.class_names[i]])
 
     # We determine the top 'number_of_colors - 1' most common pathways, superclasses and classes
     top_pathways = sorted(

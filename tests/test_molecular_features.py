@@ -35,6 +35,7 @@ PARAMETERS = [
     "include_skfp_mqns_fingerprint",
     "include_skfp_pattern_fingerprint",
     "include_skfp_pubchem_fingerprint",
+    "include_skfp_pharmacophore_fingerprint",
     "include_skfp_rdkit_2d_desc_fingerprint",
     "include_skfp_rdkit_fingerprint",
     "include_skfp_secfp_fingerprint",

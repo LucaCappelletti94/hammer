@@ -27,7 +27,6 @@ def visualize_features_time_requirements():
         orientation="horizontal",
         height=6,
         show_last_level_as_legend=False,
-        sanitize_metrics=False,
         legend_position="upper left",
     )
 

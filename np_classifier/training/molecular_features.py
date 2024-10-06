@@ -54,12 +54,9 @@ from skfp.fingerprints.lingo import LingoFingerprint
 from skfp.fingerprints.maccs import MACCSFingerprint
 from skfp.fingerprints.map import MAPFingerprint
 from skfp.fingerprints.mhfp import MHFPFingerprint
-from skfp.fingerprints.mordred_fp import MordredFingerprint
 from skfp.fingerprints.mqns import MQNsFingerprint
 from skfp.fingerprints.pattern import PatternFingerprint
-from skfp.fingerprints.pharmacophore import PharmacophoreFingerprint
 from skfp.fingerprints.pubchem import PubChemFingerprint
-from skfp.fingerprints.rdkit_2d_desc import RDKit2DDescriptorsFingerprint
 from skfp.fingerprints.rdkit_fp import RDKitFingerprint
 from skfp.fingerprints.secfp import SECFPFingerprint
 from skfp.fingerprints.topological_torsion import TopologicalTorsionFingerprint
@@ -97,12 +94,9 @@ def compute_features(
     include_skfp_maccs_fingerprint: bool = False,
     include_skfp_map_fingerprint: bool = False,
     include_skfp_mhfp_fingerprint: bool = False,
-    include_skfp_mordred_fingerprint: bool = False,
     include_skfp_mqns_fingerprint: bool = False,
     include_skfp_pattern_fingerprint: bool = False,
-    include_skfp_pharmacophore_fingerprint: bool = False,
     include_skfp_pubchem_fingerprint: bool = False,
-    include_skfp_rdkit_2d_desc_fingerprint: bool = False,
     include_skfp_rdkit_fingerprint: bool = False,
     include_skfp_secfp_fingerprint: bool = False,
     include_skfp_topological_torsion_fingerprint: bool = False,
@@ -176,7 +170,6 @@ def compute_features(
             MHFPFingerprint,
             {"fp_size": n_bits, "radius": radius},
         ),
-        (include_skfp_mordred_fingerprint, "mordred", MordredFingerprint, None),
         (include_skfp_mqns_fingerprint, "mqns", MQNsFingerprint, None),
         (
             include_skfp_pattern_fingerprint,
@@ -184,19 +177,7 @@ def compute_features(
             PatternFingerprint,
             {"fp_size": n_bits},
         ),
-        (
-            include_skfp_pharmacophore_fingerprint,
-            "pharmacophore",
-            PharmacophoreFingerprint,
-            {"fp_size": n_bits},
-        ),
         (include_skfp_pubchem_fingerprint, "pubchem", PubChemFingerprint, None),
-        (
-            include_skfp_rdkit_2d_desc_fingerprint,
-            "rdkit_2d_desc",
-            RDKit2DDescriptorsFingerprint,
-            None,
-        ),
         (
             include_skfp_rdkit_fingerprint,
             "rdkit",

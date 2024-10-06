@@ -5,11 +5,11 @@ from collections import Counter
 from multiprocessing import cpu_count
 import silence_tensorflow.auto  # pylint: disable=unused-import
 import numpy as np
+import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 from sklearn.decomposition import PCA
 from MulticoreTSNE import MulticoreTSNE
-import matplotlib.pyplot as plt
-from matplotlib.colors import TABLEAU_COLORS
+from barplots.barplot import EXTENDED_COLORS
 from np_classifier.training import Dataset
 
 
@@ -42,7 +42,6 @@ def visualize():
         include_skfp_mqns_fingerprint=True,
         include_skfp_pattern_fingerprint=True,
         include_skfp_pubchem_fingerprint=True,
-        include_skfp_rdkit_2d_desc_fingerprint=True,
         include_skfp_rdkit_fingerprint=True,
         include_skfp_secfp_fingerprint=True,
         include_skfp_topological_torsion_fingerprint=True,
@@ -57,8 +56,7 @@ def visualize():
     # Since we can't possibly show all of the superclasses and classes,
     # we will only show the top 'number of colors' of each. Some samples will have multiple
     # pathways, superclasses and classes, so we will only show the most common ones.
-
-    colors = list(TABLEAU_COLORS.values())
+    colors = EXTENDED_COLORS[:16]
     number_of_colors = len(colors)
 
     counters = {}
@@ -87,12 +85,15 @@ def visualize():
     )[: number_of_colors - 1]
 
     # Plus one for "Other"
-    top_pathways.append("Other")
-    top_superclasses.append("Other")
-    top_classes.append("Other")
+    if len(counters["pathway"]) > number_of_colors - 1:
+        top_pathways.append("Other")
+    if len(counters["superclass"]) > number_of_colors - 1:
+        top_superclasses.append("Other")
+    if len(counters["class"]) > number_of_colors - 1:
+        top_classes.append("Other")
 
     # We determine the most common pathways, superclasses and classes for each sample.
-    # When the most common entry of a sample is not in the top 11, we will replace it with "Other".
+    # When the most common entry of a sample is not in the top ones, we will replace it with "Other".
     most_common_pathways = []
     most_common_superclasses = []
     most_common_classes = []
@@ -166,7 +167,7 @@ def visualize():
             continue
 
         pca = PCA(n_components=50)
-        tsne = MulticoreTSNE(n_components=2, n_jobs=cpu_count(), verbose=1)
+        tsne = MulticoreTSNE(n_components=2, n_jobs=cpu_count(), verbose=0)
 
         if features.shape[1] > 50:
             # First, we reduce the dimensionality of the features to 50
@@ -211,7 +212,12 @@ def visualize():
                     )
                 )
                 labels.append(label)
-            ax[i].legend(handles, labels, loc="upper right")
+            ax[i].legend(
+                handles,
+                labels,
+                loc="upper right",
+                prop={'size': 8}
+            )
 
         plt.tight_layout()
 

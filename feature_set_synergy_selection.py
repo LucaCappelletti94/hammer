@@ -39,7 +39,6 @@ def compare_feature_set_synergies():
         include_skfp_mqns_fingerprint=True,
         include_skfp_pattern_fingerprint=True,
         include_skfp_pubchem_fingerprint=True,
-        include_skfp_rdkit_2d_desc_fingerprint=True,
         include_skfp_rdkit_fingerprint=True,
         include_skfp_secfp_fingerprint=True,
         include_skfp_topological_torsion_fingerprint=True,

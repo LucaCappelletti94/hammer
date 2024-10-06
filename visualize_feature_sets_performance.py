@@ -8,13 +8,13 @@ from barplots import barplots
 
 def visualize_feature_sets_performance():
     """Visualize the performance of different feature sets."""
-    if not os.path.exists("feature_sets_performance.csv"):
-        raise FileNotFoundError(
-            "feature_sets_performance.csv not found. Run feature_set_selection.py first."
-        )
+    # if not os.path.exists("feature_sets_performance.csv"):
+    #     raise FileNotFoundError(
+    #         "feature_sets_performance.csv not found. Run feature_set_selection.py first."
+    #     )
 
     performance = pd.concat([
-        pd.read_csv("feature_sets_performance.csv"),
+        # pd.read_csv("feature_sets_performance.csv"),
         pd.DataFrame(compress_json.load("feature_sets_performance.json"))
     ])
 

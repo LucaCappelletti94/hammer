@@ -116,59 +116,115 @@ def compute_features(
     molecule_with_hydrogens = AddHs(molecule)
 
     # We zip the SKFP fingerprints with their class
-    for include_fp, fp_name, fp_class in [
-        (include_skfp_autocorr_fingerprint, "autocorr", AutocorrFingerprint),
-        (include_skfp_avalon_fingerprint, "avalon", AvalonFingerprint),
-        (include_skfp_ecfp_fingerprint, "ecfp", ECFPFingerprint),
-        (include_skfp_erg_fingerprint, "erg", ERGFingerprint),
-        (include_skfp_estate_fingerprint, "estate", EStateFingerprint),
+    for include_fp, fp_name, fp_class, kwargs in [
+        (include_skfp_autocorr_fingerprint, "autocorr", AutocorrFingerprint, None),
+        (
+            include_skfp_avalon_fingerprint,
+            "avalon",
+            AvalonFingerprint,
+            {"fp_size": n_bits},
+        ),
+        (
+            include_skfp_ecfp_fingerprint,
+            "ecfp",
+            ECFPFingerprint,
+            {"radius": radius, "fp_size": n_bits},
+        ),
+        (include_skfp_erg_fingerprint, "erg", ERGFingerprint, None),
+        (include_skfp_estate_fingerprint, "estate", EStateFingerprint, None),
         (
             include_skfp_functional_groups_fingerprint,
             "functional_groups",
             FunctionalGroupsFingerprint,
+            None,
         ),
         (
             include_skfp_ghose_crippen_fingerprint,
             "ghose_crippen",
             GhoseCrippenFingerprint,
+            None,
         ),
         (
             include_skfp_klekota_roth_fingerprint,
             "klekota_roth",
             KlekotaRothFingerprint,
+            None,
         ),
-        (include_skfp_laggner_fingerprint, "laggner", LaggnerFingerprint),
-        (include_skfp_layered_fingerprint, "layered", LayeredFingerprint),
-        (include_skfp_lingo_fingerprint, "lingo", LingoFingerprint),
-        (include_skfp_maccs_fingerprint, "maccs", MACCSFingerprint),
-        (include_skfp_map_fingerprint, "map", MAPFingerprint),
-        (include_skfp_mhfp_fingerprint, "mhfp", MHFPFingerprint),
-        (include_skfp_mordred_fingerprint, "mordred_fp", MordredFingerprint),
-        (include_skfp_mqns_fingerprint, "mqns", MQNsFingerprint),
-        (include_skfp_pattern_fingerprint, "pattern", PatternFingerprint),
+        (include_skfp_laggner_fingerprint, "laggner", LaggnerFingerprint, None),
+        (
+            include_skfp_layered_fingerprint,
+            "layered",
+            LayeredFingerprint,
+            {"fp_size": n_bits},
+        ),
+        (
+            include_skfp_lingo_fingerprint,
+            "lingo",
+            LingoFingerprint,
+            {"fp_size": n_bits},
+        ),
+        (include_skfp_maccs_fingerprint, "maccs", MACCSFingerprint, None),
+        (
+            include_skfp_map_fingerprint,
+            "map",
+            MAPFingerprint,
+            {"fp_size": n_bits, "radius": radius},
+        ),
+        (
+            include_skfp_mhfp_fingerprint,
+            "mhfp",
+            MHFPFingerprint,
+            {"fp_size": n_bits, "radius": radius},
+        ),
+        (include_skfp_mordred_fingerprint, "mordred", MordredFingerprint, None),
+        (include_skfp_mqns_fingerprint, "mqns", MQNsFingerprint, None),
+        (
+            include_skfp_pattern_fingerprint,
+            "pattern",
+            PatternFingerprint,
+            {"fp_size": n_bits},
+        ),
         (
             include_skfp_pharmacophore_fingerprint,
             "pharmacophore",
             PharmacophoreFingerprint,
+            {"fp_size": n_bits},
         ),
-        (include_skfp_pubchem_fingerprint, "pubchem", PubChemFingerprint),
+        (include_skfp_pubchem_fingerprint, "pubchem", PubChemFingerprint, None),
         (
             include_skfp_rdkit_2d_desc_fingerprint,
             "rdkit_2d_desc",
             RDKit2DDescriptorsFingerprint,
+            None,
         ),
-        (include_skfp_rdkit_fingerprint, "rdkit", RDKitFingerprint),
-        (include_skfp_secfp_fingerprint, "secfp", SECFPFingerprint),
+        (
+            include_skfp_rdkit_fingerprint,
+            "rdkit",
+            RDKitFingerprint,
+            {"fp_size": n_bits},
+        ),
+        (
+            include_skfp_secfp_fingerprint,
+            "secfp",
+            SECFPFingerprint,
+            {"fp_size": n_bits, "radius": radius},
+        ),
         (
             include_skfp_topological_torsion_fingerprint,
             "topological_torsion",
             TopologicalTorsionFingerprint,
+            {"fp_size": n_bits},
         ),
-        (include_skfp_vsa_fingerprint, "vsa", VSAFingerprint),
+        (include_skfp_vsa_fingerprint, "vsa", VSAFingerprint, None),
     ]:
         if include_fp:
-            skfp_fingerprint = fp_class()
-            features[f"{fp_name}_skfp_fingerprint"] = skfp_fingerprint.transform([molecule_with_hydrogens])[0]
+            if kwargs is None:
+                skfp_fingerprint = fp_class()
+            else:
+                skfp_fingerprint = fp_class(**kwargs)
+            features[f"{fp_name}_skfp_fingerprint"] = skfp_fingerprint.transform(
+                [molecule_with_hydrogens]
+            )[0]
 
     if include_morgan_fingerprint:
         morgan_fingerprint_generator = GetMorganGenerator(radius=radius, fpSize=n_bits)

@@ -140,7 +140,12 @@ def visualize():
     most_common_classes = np.array(most_common_classes)
 
     train_x["composite"] = np.concatenate(
-        [train_x[feature_set_name] for feature_set_name in train_x], axis=1
+        [
+            train_x[feature_set_name]
+            for feature_set_name in train_x
+            if not np.isnan(train_x[feature_set_name]).any()
+        ],
+        axis=1,
     )
 
     for feature_set_name, features in tqdm(

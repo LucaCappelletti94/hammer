@@ -81,7 +81,6 @@ def compute_features(
     include_maccs_fingerprint: bool = False,
     include_map4_fingerprint: bool = False,
     include_skfp_autocorr_fingerprint: bool = False,
-    include_skfp_avalon_fingerprint: bool = False,
     include_skfp_ecfp_fingerprint: bool = False,
     include_skfp_erg_fingerprint: bool = False,
     include_skfp_estate_fingerprint: bool = False,
@@ -112,12 +111,6 @@ def compute_features(
     # We zip the SKFP fingerprints with their class
     for include_fp, fp_name, fp_class, kwargs in [
         (include_skfp_autocorr_fingerprint, "autocorr", AutocorrFingerprint, None),
-        (
-            include_skfp_avalon_fingerprint,
-            "avalon",
-            AvalonFingerprint,
-            {"fp_size": n_bits},
-        ),
         (
             include_skfp_ecfp_fingerprint,
             "ecfp",

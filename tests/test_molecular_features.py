@@ -18,7 +18,6 @@ PARAMETERS = [
     "include_map4_fingerprint",
     "include_descriptors",
     "include_skfp_autocorr_fingerprint",
-    "include_skfp_avalon_fingerprint",
     "include_skfp_ecfp_fingerprint",
     "include_skfp_erg_fingerprint",
     "include_skfp_estate_fingerprint",

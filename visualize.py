@@ -26,7 +26,6 @@ def visualize():
         include_map4_fingerprint=True,
         include_topological_torsion_fingerprint=True,
         include_skfp_autocorr_fingerprint=True,
-        include_skfp_avalon_fingerprint=True,
         include_skfp_ecfp_fingerprint=True,
         include_skfp_erg_fingerprint=True,
         include_skfp_estate_fingerprint=True,

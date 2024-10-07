@@ -26,7 +26,21 @@ def visualize_feature_sets_performance():
         )
 
     performance = pd.read_csv("feature_sets_performance.csv")
+    performance_4096 = pd.read_csv("feature_sets_performance_4096.csv")
+    performance_radius2 = pd.read_csv("feature_sets_performance_radius2.csv")
+
     performance["feature_set"] = performance["feature_set"].str.replace("fingerprint", "")
+    performance_4096["feature_set"] = performance_4096["feature_set"].str.replace("fingerprint", "")
+    performance_radius2["feature_set"] = performance_radius2["feature_set"].str.replace("fingerprint", "")
+
+    performance_4096["feature_set"] = [
+        f"{feature_set} (4096 bits)" for feature_set in performance_4096["feature_set"]
+    ]
+    performance_radius2["feature_set"] = [
+        f"{feature_set} (radius 2)" for feature_set in performance_radius2["feature_set"]
+    ]
+
+    performance = pd.concat([performance, performance_4096, performance_radius2])
 
     barplots(
         performance,

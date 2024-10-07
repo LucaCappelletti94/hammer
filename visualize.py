@@ -16,31 +16,27 @@ from np_classifier.training import Dataset
 def visualize():
     """Train the model."""
     dataset = Dataset(
-        include_atom_pair_fingerprint=True,
-        include_maccs_fingerprint=True,
+        # include_atom_pair_fingerprint=True,
+        # include_maccs_fingerprint=True,
         include_morgan_fingerprint=True,
-        include_rdkit_fingerprint=True,
-        include_avalon_fingerprint=True,
-        include_descriptors=True,
-        include_map4_fingerprint=True,
-        include_topological_torsion_fingerprint=True,
-        include_skfp_autocorr_fingerprint=True,
+        # include_rdkit_fingerprint=True,
+        # include_avalon_fingerprint=True,
+        # include_descriptors=True,
+        # include_topological_torsion_fingerprint=True,
+        # include_skfp_autocorr_fingerprint=True,
         include_skfp_ecfp_fingerprint=True,
-        include_skfp_erg_fingerprint=True,
-        include_skfp_estate_fingerprint=True,
-        include_skfp_functional_groups_fingerprint=True,
-        include_skfp_ghose_crippen_fingerprint=True,
-        include_skfp_klekota_roth_fingerprint=True,
-        include_skfp_laggner_fingerprint=True,
-        include_skfp_layered_fingerprint=True,
-        include_skfp_lingo_fingerprint=True,
-        include_skfp_map_fingerprint=True,
-        include_skfp_mhfp_fingerprint=True,
-        include_skfp_mqns_fingerprint=True,
-        include_skfp_pattern_fingerprint=True,
-        include_skfp_pubchem_fingerprint=True,
+        # include_skfp_estate_fingerprint=True,
+        # include_skfp_ghose_crippen_fingerprint=True,
+        # include_skfp_klekota_roth_fingerprint=True,
+        # include_skfp_laggner_fingerprint=True,
+        # include_skfp_layered_fingerprint=True,
+        # include_skfp_lingo_fingerprint=True,
+        # include_skfp_mqns_fingerprint=True,
+        # include_skfp_pattern_fingerprint=True,
+        # include_skfp_pubchem_fingerprint=True,
         include_skfp_secfp_fingerprint=True,
-        include_skfp_vsa_fingerprint=True,
+        # include_skfp_vsa_fingerprint=True,
+        radius=2,
     )
     # We compute the features without augmentation
     _scalers, (train_x, train_y), _ = dataset.primary_split(augment=False)
@@ -152,7 +148,7 @@ def visualize():
         leave=False,
         dynamic_ncols=True,
     ):
-        path = f"data_visualizations/{feature_set_name}.png"
+        path = f"data_visualizations/{feature_set_name}_radius2.png"
 
         if os.path.exists(path):
             continue

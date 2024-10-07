@@ -27,15 +27,12 @@ PARAMETERS = [
     "include_skfp_laggner_fingerprint",
     "include_skfp_layered_fingerprint",
     "include_skfp_lingo_fingerprint",
-    "include_skfp_maccs_fingerprint",
     "include_skfp_map_fingerprint",
     "include_skfp_mhfp_fingerprint",
     "include_skfp_mqns_fingerprint",
     "include_skfp_pattern_fingerprint",
     "include_skfp_pubchem_fingerprint",
-    "include_skfp_rdkit_fingerprint",
     "include_skfp_secfp_fingerprint",
-    "include_skfp_topological_torsion_fingerprint",
     "include_skfp_vsa_fingerprint",
 ]
 

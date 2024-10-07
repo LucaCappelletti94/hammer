@@ -41,7 +41,6 @@ from rdkit.Chem.rdMolDescriptors import (  # pylint: disable=no-name-in-module
 )
 from rdkit.Chem import GraphDescriptors  # pylint: disable=no-name-in-module
 from skfp.fingerprints.autocorr import AutocorrFingerprint
-from skfp.fingerprints.avalon import AvalonFingerprint
 from skfp.fingerprints.ecfp import ECFPFingerprint
 from skfp.fingerprints.erg import ERGFingerprint
 from skfp.fingerprints.estate import EStateFingerprint
@@ -57,9 +56,7 @@ from skfp.fingerprints.mhfp import MHFPFingerprint
 from skfp.fingerprints.mqns import MQNsFingerprint
 from skfp.fingerprints.pattern import PatternFingerprint
 from skfp.fingerprints.pubchem import PubChemFingerprint
-from skfp.fingerprints.rdkit_fp import RDKitFingerprint
 from skfp.fingerprints.secfp import SECFPFingerprint
-from skfp.fingerprints.topological_torsion import TopologicalTorsionFingerprint
 from skfp.fingerprints.vsa import VSAFingerprint
 
 from map4 import MAP4
@@ -90,15 +87,12 @@ def compute_features(
     include_skfp_laggner_fingerprint: bool = False,
     include_skfp_layered_fingerprint: bool = False,
     include_skfp_lingo_fingerprint: bool = False,
-    include_skfp_maccs_fingerprint: bool = False,
     include_skfp_map_fingerprint: bool = False,
     include_skfp_mhfp_fingerprint: bool = False,
     include_skfp_mqns_fingerprint: bool = False,
     include_skfp_pattern_fingerprint: bool = False,
     include_skfp_pubchem_fingerprint: bool = False,
-    include_skfp_rdkit_fingerprint: bool = False,
     include_skfp_secfp_fingerprint: bool = False,
-    include_skfp_topological_torsion_fingerprint: bool = False,
     include_skfp_vsa_fingerprint: bool = False,
     include_descriptors: bool = False,
 ) -> Dict[str, np.ndarray]:
@@ -150,7 +144,6 @@ def compute_features(
             LingoFingerprint,
             {"fp_size": n_bits},
         ),
-        (include_skfp_maccs_fingerprint, "maccs", MACCSFingerprint, None),
         (
             include_skfp_map_fingerprint,
             "map",
@@ -172,22 +165,10 @@ def compute_features(
         ),
         (include_skfp_pubchem_fingerprint, "pubchem", PubChemFingerprint, None),
         (
-            include_skfp_rdkit_fingerprint,
-            "rdkit",
-            RDKitFingerprint,
-            {"fp_size": n_bits},
-        ),
-        (
             include_skfp_secfp_fingerprint,
             "secfp",
             SECFPFingerprint,
             {"fp_size": n_bits, "radius": radius},
-        ),
-        (
-            include_skfp_topological_torsion_fingerprint,
-            "topological_torsion",
-            TopologicalTorsionFingerprint,
-            {"fp_size": n_bits},
         ),
         (include_skfp_vsa_fingerprint, "vsa", VSAFingerprint, None),
     ]:

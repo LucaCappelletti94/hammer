@@ -32,15 +32,12 @@ def compare_feature_set_synergies():
         include_skfp_laggner_fingerprint=True,
         include_skfp_layered_fingerprint=True,
         include_skfp_lingo_fingerprint=True,
-        include_skfp_maccs_fingerprint=True,
         include_skfp_map_fingerprint=True,
         include_skfp_mhfp_fingerprint=True,
         include_skfp_mqns_fingerprint=True,
         include_skfp_pattern_fingerprint=True,
         include_skfp_pubchem_fingerprint=True,
-        include_skfp_rdkit_fingerprint=True,
         include_skfp_secfp_fingerprint=True,
-        include_skfp_topological_torsion_fingerprint=True,
         include_skfp_vsa_fingerprint=True,
     )
 

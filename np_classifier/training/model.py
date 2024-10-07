@@ -160,8 +160,6 @@ class Classifier:
             in model_input_layer_names,
             include_topological_torsion_fingerprint="topological_torsion_fingerprint"
             in model_input_layer_names,
-            include_feature_morgan_fingerprint="feature_morgan_fingerprint"
-            in model_input_layer_names,
             include_avalon_fingerprint="avalon_fingerprint" in model_input_layer_names,
             include_maccs_fingerprint="maccs_fingerprint" in model_input_layer_names,
             include_map4_fingerprint="map4_fingerprint" in model_input_layer_names,

@@ -21,7 +21,6 @@ def compare_feature_sets():
         include_rdkit_fingerprint=True,
         include_avalon_fingerprint=True,
         include_descriptors=True,
-        include_feature_morgan_fingerprint=True,
         include_map4_fingerprint=True,
         include_topological_torsion_fingerprint=True,
         include_skfp_autocorr_fingerprint=True,

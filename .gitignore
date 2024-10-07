@@ -170,7 +170,6 @@ mac_keys.csv
 maccs_fingerprint.csv
 dot.txt
 atom_pair_fingerprint.csv
-feature_morgan_fingerprint.csv
 topological_torsion_fingerprint.csv
 avalon_fingerprint.csv
 pickaxe.json.gz

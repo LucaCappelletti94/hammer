@@ -12,7 +12,6 @@ PARAMETERS = [
     "include_rdkit_fingerprint",
     "include_atom_pair_fingerprint",
     "include_topological_torsion_fingerprint",
-    "include_feature_morgan_fingerprint",
     "include_avalon_fingerprint",
     "include_maccs_fingerprint",
     "include_map4_fingerprint",

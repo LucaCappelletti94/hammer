@@ -12,7 +12,6 @@ from rdkit.Chem.rdFingerprintGenerator import (  # pylint: disable=no-name-in-mo
     GetRDKitFPGenerator,  # pylint: disable=no-name-in-module
     GetAtomPairGenerator,  # pylint: disable=no-name-in-module
     GetTopologicalTorsionGenerator,  # pylint: disable=no-name-in-module
-    GetMorganFeatureAtomInvGen,  # pylint: disable=no-name-in-module
 )
 from rdkit.Chem import AddHs  # pylint: disable=no-name-in-module
 from rdkit.Chem import MACCSkeys  # pylint: disable=no-name-in-module
@@ -50,7 +49,6 @@ from skfp.fingerprints.klekota_roth import KlekotaRothFingerprint
 from skfp.fingerprints.laggner import LaggnerFingerprint
 from skfp.fingerprints.layered import LayeredFingerprint
 from skfp.fingerprints.lingo import LingoFingerprint
-from skfp.fingerprints.maccs import MACCSFingerprint
 from skfp.fingerprints.map import MAPFingerprint
 from skfp.fingerprints.mhfp import MHFPFingerprint
 from skfp.fingerprints.mqns import MQNsFingerprint
@@ -73,7 +71,6 @@ def compute_features(
     include_rdkit_fingerprint: bool = False,
     include_atom_pair_fingerprint: bool = False,
     include_topological_torsion_fingerprint: bool = False,
-    include_feature_morgan_fingerprint: bool = False,
     include_avalon_fingerprint: bool = False,
     include_maccs_fingerprint: bool = False,
     include_map4_fingerprint: bool = False,
@@ -217,22 +214,6 @@ def compute_features(
 
         features["topological_torsion_fingerprint"] = (
             topological_torsion_fingerprint.astype(np.uint8)
-        )
-
-    if include_feature_morgan_fingerprint:
-        feature_morgan_fingerprint_generator = GetMorganGenerator(
-            radius=radius,
-            fpSize=n_bits,
-            atomInvariantsGenerator=GetMorganFeatureAtomInvGen(),
-        )
-        feature_morgan_fingerprint = (
-            feature_morgan_fingerprint_generator.GetFingerprintAsNumPy(
-                mol=molecule_with_hydrogens
-            )
-        )
-
-        features["feature_morgan_fingerprint"] = feature_morgan_fingerprint.astype(
-            np.uint8
         )
 
     if include_avalon_fingerprint:

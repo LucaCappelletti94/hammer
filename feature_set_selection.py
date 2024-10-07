@@ -15,35 +15,27 @@ from np_classifier.training import Dataset
 def compare_feature_sets():
     """Compare the quality of different feature sets."""
     dataset = Dataset(
-        # include_atom_pair_fingerprint=True,
-        # include_maccs_fingerprint=True,
+        include_atom_pair_fingerprint=True,
         include_morgan_fingerprint=True,
-        # include_rdkit_fingerprint=True,
-        # include_avalon_fingerprint=True,
-        # include_descriptors=True,
-        # include_topological_torsion_fingerprint=True,
-        # include_skfp_autocorr_fingerprint=True,
-        include_skfp_ecfp_fingerprint=True,
-        # include_skfp_estate_fingerprint=True,
-        # include_skfp_ghose_crippen_fingerprint=True,
-        # include_skfp_klekota_roth_fingerprint=True,
-        # include_skfp_laggner_fingerprint=True,
-        # include_skfp_layered_fingerprint=True,
-        # include_skfp_lingo_fingerprint=True,
-        # include_skfp_mqns_fingerprint=True,
-        # include_skfp_pattern_fingerprint=True,
+        include_rdkit_fingerprint=True,
+        include_avalon_fingerprint=True,
+        include_topological_torsion_fingerprint=True,
+        include_skfp_layered_fingerprint=True,
+        include_skfp_lingo_fingerprint=True,
+        include_skfp_mqns_fingerprint=True,
+        include_skfp_pattern_fingerprint=True,
         # include_skfp_pubchem_fingerprint=True,
         include_skfp_secfp_fingerprint=True,
         # include_skfp_vsa_fingerprint=True,
-        radius=2,
+        n_bits=4096,
     )
 
     performance = []
 
     stored_performance: Optional[pd.DataFrame] = None
 
-    if os.path.exists("feature_sets_performance_radius2.csv"):
-        stored_performance = pd.read_csv("feature_sets_performance_radius2.csv")
+    if os.path.exists("feature_sets_performance.csv"):
+        stored_performance = pd.read_csv("feature_sets_performance.csv")
 
     for _, (train_x, train_y), (valid_x, valid_y) in dataset.train_split(augment=False):
         concatenated_train_y = np.hstack(list(train_y.values()))
@@ -103,12 +95,12 @@ def compare_feature_sets():
                 )
                 compress_json.dump(
                     performance,
-                    "feature_sets_performance_radius2.json",
+                    "feature_sets_performance.json",
                 )
 
     performance = pd.DataFrame(performance)
     performance = pd.concat([performance, stored_performance], ignore_index=True)
-    performance.to_csv("feature_sets_performance_radius2.csv", index=False)
+    performance.to_csv("feature_sets_performance.csv", index=False)
 
 
 if __name__ == "__main__":

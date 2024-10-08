@@ -2112,7 +2112,8 @@
             "Fatty acids"
         ],
         "Fatty esters": [
-            "Fatty acids"
+            "Fatty acids",
+            "Terpenoids"
         ],
         "Fatty amides": [
             "Fatty acids"
@@ -2288,9 +2289,6 @@
         "Pseudoalkaloids": [
             "Alkaloids",
             "Terpenoids"
-        ],
-        "Spingolipids": [
-            "Fatty acids"
         ],
         "Peptide alkaloids": [
             "Alkaloids",

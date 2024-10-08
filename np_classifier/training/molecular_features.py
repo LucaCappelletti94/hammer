@@ -65,8 +65,6 @@ SUGARS: List[Mol] = [MolFromSmarts(sugar) for sugar in SUGAR_SMARTS]
 
 def compute_features(
     smile: str,
-    radius: int = 3,
-    n_bits: int = 2048,
     include_morgan_fingerprint: bool = False,
     include_rdkit_fingerprint: bool = False,
     include_atom_pair_fingerprint: bool = False,
@@ -74,23 +72,23 @@ def compute_features(
     include_avalon_fingerprint: bool = False,
     include_maccs_fingerprint: bool = False,
     include_map4_fingerprint: bool = False,
-    include_skfp_autocorr_fingerprint: bool = False,
-    include_skfp_ecfp_fingerprint: bool = False,
-    include_skfp_erg_fingerprint: bool = False,
-    include_skfp_estate_fingerprint: bool = False,
-    include_skfp_functional_groups_fingerprint: bool = False,
-    include_skfp_ghose_crippen_fingerprint: bool = False,
-    include_skfp_klekota_roth_fingerprint: bool = False,
-    include_skfp_laggner_fingerprint: bool = False,
-    include_skfp_layered_fingerprint: bool = False,
-    include_skfp_lingo_fingerprint: bool = False,
-    include_skfp_map_fingerprint: bool = False,
-    include_skfp_mhfp_fingerprint: bool = False,
-    include_skfp_mqns_fingerprint: bool = False,
-    include_skfp_pattern_fingerprint: bool = False,
-    include_skfp_pubchem_fingerprint: bool = False,
-    include_skfp_secfp_fingerprint: bool = False,
-    include_skfp_vsa_fingerprint: bool = False,
+    include_autocorr_fingerprint: bool = False,
+    include_extended_connectivity_fingerprint: bool = False,
+    include_extended_reduced_graph_fingerprint: bool = False,
+    include_estate_fingerprint: bool = False,
+    include_functional_groups_fingerprint: bool = False,
+    include_ghose_crippen_fingerprint: bool = False,
+    include_klekota_roth_fingerprint: bool = False,
+    include_laggner_fingerprint: bool = False,
+    include_layered_fingerprint: bool = False,
+    include_lingo_fingerprint: bool = False,
+    include_map_fingerprint: bool = False,
+    include_mhfp_fingerprint: bool = False,
+    include_mqns_fingerprint: bool = False,
+    include_pattern_fingerprint: bool = False,
+    include_pubchem_fingerprint: bool = False,
+    include_smiles_extended_connectivity_fingerprint: bool = False,
+    include_vsa_fingerprint: bool = False,
     include_descriptors: bool = False,
 ) -> Dict[str, np.ndarray]:
     """Return a complete set of fingerprints and descriptors."""
@@ -101,85 +99,85 @@ def compute_features(
 
     # We zip the SKFP fingerprints with their class
     for include_fp, fp_name, fp_class, kwargs in [
-        (include_skfp_autocorr_fingerprint, "autocorr", AutocorrFingerprint, None),
+        (include_autocorr_fingerprint, "autocorr", AutocorrFingerprint, None),
         (
-            include_skfp_ecfp_fingerprint,
-            "ecfp",
+            include_extended_connectivity_fingerprint,
+            "extended_connectivity",
             ECFPFingerprint,
-            {"radius": radius, "fp_size": n_bits},
+            {"radius": 1, "fp_size": 2048},
         ),
-        (include_skfp_erg_fingerprint, "erg", ERGFingerprint, None),
-        (include_skfp_estate_fingerprint, "estate", EStateFingerprint, None),
+        (include_extended_reduced_graph_fingerprint, "extended_reduced_graph", ERGFingerprint, None),
+        (include_estate_fingerprint, "estate", EStateFingerprint, None),
         (
-            include_skfp_functional_groups_fingerprint,
+            include_functional_groups_fingerprint,
             "functional_groups",
             FunctionalGroupsFingerprint,
             None,
         ),
         (
-            include_skfp_ghose_crippen_fingerprint,
+            include_ghose_crippen_fingerprint,
             "ghose_crippen",
             GhoseCrippenFingerprint,
             None,
         ),
         (
-            include_skfp_klekota_roth_fingerprint,
+            include_klekota_roth_fingerprint,
             "klekota_roth",
             KlekotaRothFingerprint,
             None,
         ),
-        (include_skfp_laggner_fingerprint, "laggner", LaggnerFingerprint, None),
+        (include_laggner_fingerprint, "laggner", LaggnerFingerprint, None),
         (
-            include_skfp_layered_fingerprint,
+            include_layered_fingerprint,
             "layered",
             LayeredFingerprint,
-            {"fp_size": n_bits},
+            {"fp_size": 2048},
         ),
         (
-            include_skfp_lingo_fingerprint,
+            include_lingo_fingerprint,
             "lingo",
             LingoFingerprint,
-            {"fp_size": n_bits},
+            {"fp_size": 1024},
         ),
         (
-            include_skfp_map_fingerprint,
+            include_map_fingerprint,
             "map",
             MAPFingerprint,
-            {"fp_size": n_bits, "radius": radius},
+            {"fp_size": 1024, "radius": 2},
         ),
         (
-            include_skfp_mhfp_fingerprint,
+            include_mhfp_fingerprint,
             "mhfp",
             MHFPFingerprint,
-            {"fp_size": n_bits, "radius": radius},
+            {"fp_size": 2048, "radius": 3},
         ),
-        (include_skfp_mqns_fingerprint, "mqns", MQNsFingerprint, None),
+        (include_mqns_fingerprint, "mqns", MQNsFingerprint, None),
         (
-            include_skfp_pattern_fingerprint,
+            include_pattern_fingerprint,
             "pattern",
             PatternFingerprint,
-            {"fp_size": n_bits},
+            {"fp_size": 4096},
         ),
-        (include_skfp_pubchem_fingerprint, "pubchem", PubChemFingerprint, None),
+        (include_pubchem_fingerprint, "pubchem", PubChemFingerprint, None),
         (
-            include_skfp_secfp_fingerprint,
-            "secfp",
+            include_smiles_extended_connectivity_fingerprint,
+            "smiles_extended_connectivity",
             SECFPFingerprint,
-            {"fp_size": n_bits, "radius": radius},
+            {"fp_size": 1024, "radius": 2},
         ),
-        (include_skfp_vsa_fingerprint, "vsa", VSAFingerprint, None),
+        (include_vsa_fingerprint, "vsa", VSAFingerprint, None),
     ]:
         if include_fp:
             if kwargs is None:
                 skfp_fingerprint = fp_class()
             else:
                 skfp_fingerprint = fp_class(**kwargs)
-            features[f"{fp_name}_skfp_fingerprint"] = skfp_fingerprint.transform(
+            features[f"{fp_name}_fingerprint"] = skfp_fingerprint.transform(
                 [molecule_with_hydrogens]
             )[0]
 
     if include_morgan_fingerprint:
-        morgan_fingerprint_generator = GetMorganGenerator(radius=radius, fpSize=n_bits)
+        morgan_fingerprint_generator = GetMorganGenerator(radius=1, fpSize=2048)
         morgan_fingerprint = morgan_fingerprint_generator.GetFingerprintAsNumPy(
             mol=molecule_with_hydrogens
         )
@@ -187,7 +185,7 @@ def compute_features(
         features["morgan_fingerprint"] = morgan_fingerprint.astype(np.uint8)
 
     if include_rdkit_fingerprint:
-        rdkit_fingerprint_generator = GetRDKitFPGenerator(fpSize=n_bits)
+        rdkit_fingerprint_generator = GetRDKitFPGenerator(fpSize=4096)
         rdkit_fingerprint = rdkit_fingerprint_generator.GetFingerprintAsNumPy(
             mol=molecule_with_hydrogens
         )
@@ -195,7 +193,7 @@ def compute_features(
         features["rdkit_fingerprint"] = rdkit_fingerprint.astype(np.uint8)
 
     if include_atom_pair_fingerprint:
-        atom_pair_fingerprint_generator = GetAtomPairGenerator(fpSize=n_bits)
+        atom_pair_fingerprint_generator = GetAtomPairGenerator(fpSize=2048)
         atom_pair_fingerprint = atom_pair_fingerprint_generator.GetFingerprintAsNumPy(
             mol=molecule_with_hydrogens
         )
@@ -204,7 +202,7 @@ def compute_features(
 
     if include_topological_torsion_fingerprint:
         topological_torsion_fingerprint_generator = GetTopologicalTorsionGenerator(
-            fpSize=n_bits
+            fpSize=1024
         )
         topological_torsion_fingerprint = (
             topological_torsion_fingerprint_generator.GetFingerprintAsNumPy(
@@ -219,7 +217,7 @@ def compute_features(
     if include_avalon_fingerprint:
         # We proceed generating the Avalon fingerprints
         avalon_fingerprint: "ExplicitBitVect" = GetAvalonFP(
-            molecule_with_hydrogens, nBits=n_bits
+            molecule_with_hydrogens, nBits=2048
         )
         avalon_fingerprint_array = np.frombuffer(
             avalon_fingerprint.ToBitString().encode(), "u1"
@@ -228,7 +226,7 @@ def compute_features(
         features["avalon_fingerprint"] = avalon_fingerprint_array.astype(np.uint8)
 
     if include_map4_fingerprint:
-        map4 = MAP4(dimensions=n_bits, radius=radius)
+        map4 = MAP4(dimensions=2048, radius=2)
         map4_fingerprint = map4.calculate(molecule_with_hydrogens)
 
         features["map4_fingerprint"] = map4_fingerprint.astype(np.uint8)

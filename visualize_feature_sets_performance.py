@@ -107,7 +107,7 @@ def visualize_feature_sets_performance():
         subplots=True,
         unique_minor_labels=False,
         orientation="horizontal",
-        height=6,
+        height=7,
         sort_bars=sort_bars,
         legend_position="lower left",
     )

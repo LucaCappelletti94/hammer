@@ -64,8 +64,7 @@ def visualize():
     # Since we can't possibly show all of the superclasses and classes,
     # we will only show the top 'number of colors' of each. Some samples will have multiple
     # pathways, superclasses and classes, so we will only show the most common ones.
-    colors = TABLEAU_COLORS[:16]
-    number_of_colors = len(colors)
+    number_of_colors = len(TABLEAU_COLORS)
 
     counters = {}
 
@@ -196,7 +195,7 @@ def visualize():
             ax[i].scatter(
                 tsne_features[:, 0],
                 tsne_features[:, 1],
-                c=[colors[index] for index in indices],
+                c=[TABLEAU_COLORS[index] for index in indices],
                 marker=".",
                 alpha=0.5,
             )
@@ -214,7 +213,7 @@ def visualize():
                         [0],
                         marker="o",
                         color="w",
-                        markerfacecolor=colors[j],
+                        markerfacecolor=TABLEAU_COLORS[j],
                         label=label,
                     )
                 )

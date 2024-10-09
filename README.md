@@ -1,4 +1,4 @@
-# 🔨Hammer
+# 🔨 Hammer
 
 Hammer is a multi-modal multi-task feed-forward neural network that predicts the pathways, classes, and superclasses of natural products based on their molecular structure and physicochemical properties. The classifier leverages a diverse set of molecular fingerprints and descriptors to capture the unique features of natural products and enable accurate predictions across multiple tasks.
 

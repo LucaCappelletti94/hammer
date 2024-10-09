@@ -10,7 +10,7 @@ def test_visualize_features_sub_command():
     subprocess.run(
         [
             "hammer",
-            "visualize_features",
+            "visualize",
             "--verbose",
             "--smoke-test",
             "--output-directory",

@@ -126,7 +126,7 @@ def _visualize_feature(
 def add_visualize_features_subcommand(sub_parser_action: "SubParserAction"):
     """Add the visualize features sub-command to the parser."""
     visualize_features_parser = sub_parser_action.add_parser(
-        "visualize_features", help="Visualize the features of the dataset."
+        "visualize", help="Visualize the features of the dataset."
     )
 
     visualize_features_parser = add_features_arguments(

@@ -177,3 +177,4 @@ cache
 *.tar.gz
 holdout_*
 histories
+.DS_Store

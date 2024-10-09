@@ -59,7 +59,6 @@ setup(
         "downloaders",
         "compress_json",
         "rdkit",
-        "tensorflow",
         "numpy",
         "scikit-learn",
         "plot-keras-history",

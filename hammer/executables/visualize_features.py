@@ -59,7 +59,7 @@ def _visualize_feature(
     tsne = MulticoreTSNE(
         n_components=2,
         n_jobs=arguments.n_jobs,
-        verbose=0,
+        verbose=1,
         n_iter_early_exag=5 if arguments.smoke_test else 250,
         n_iter=10 if arguments.smoke_test else 1000,
     )
@@ -163,7 +163,10 @@ def visualize(arguments: Namespace):
     else:
         maximal_number_of_molecules = None
 
-    dataset = Dataset(maximal_number_of_molecules=maximal_number_of_molecules)
+    dataset = Dataset(
+        maximal_number_of_molecules=maximal_number_of_molecules,
+        verbose=arguments.verbose,
+    )
     smiles, labels = dataset.all_smiles()
 
     # We construct the augmentation strategies from the argument parser.

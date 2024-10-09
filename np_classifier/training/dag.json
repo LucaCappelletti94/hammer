@@ -2109,17 +2109,20 @@
             "Fatty acids"
         ],
         "Fatty acyls": [
-            "Fatty acids"
+            "Fatty acids",
+            "Carbohydrates"
         ],
         "Fatty esters": [
             "Fatty acids",
             "Terpenoids"
         ],
         "Fatty amides": [
-            "Fatty acids"
+            "Fatty acids",
+            "Amino acids and Peptides"
         ],
         "Fatty acyl glycosides": [
-            "Fatty acids"
+            "Fatty acids",
+            "Carbohydrates"
         ],
         "Glycerolipids": [
             "Fatty acids"
@@ -2128,7 +2131,8 @@
             "Fatty acids"
         ],
         "Sphingolipids": [
-            "Fatty acids"
+            "Fatty acids",
+            "Carbohydrates"
         ],
         "Macrolides": [
             "Amino acids and Peptides",
@@ -2143,7 +2147,8 @@
             "Polyketides"
         ],
         "Chromanes": [
-            "Polyketides"
+            "Polyketides",
+            "Shikimates and Phenylpropanoids"
         ],
         "Diterpenoids": [
             "Terpenoids"
@@ -2167,7 +2172,8 @@
         ],
         "Xanthones": [
             "Polyketides",
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Terpenoids"
         ],
         "Naphthalenes": [
             "Polyketides"
@@ -2202,28 +2208,36 @@
             "Shikimates and Phenylpropanoids"
         ],
         "Coumarins": [
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Terpenoids"
         ],
         "Styrylpyrones": [
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Polyketides"
         ],
         "Diarylheptanoids": [
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Polyketides"
         ],
         "Terphenyls": [
             "Shikimates and Phenylpropanoids"
         ],
         "Diazotetronic acids and derivatives": [
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Terpenoids"
         ],
         "Fluorenes": [
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Polyketides"
         ],
         "Flavonoids": [
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Polyketides"
         ],
         "Stilbenoids": [
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Polyketides",
+            "Terpenoids"
         ],
         "Isoflavonoids": [
             "Shikimates and Phenylpropanoids"

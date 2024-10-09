@@ -5,3 +5,4 @@ include hammer/training/relabelled.json
 include hammer/training/categorical.csv.gz
 include hammer/training/dag.json
 include hammer/training/features/sugar_smarts.json
+include hammer/training/augmentation_strategies/pickaxe_normalized.json.xz

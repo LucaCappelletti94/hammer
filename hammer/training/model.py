@@ -435,7 +435,7 @@ class Classifier:
 
         if augmentation_settings is not None:
             (train_smiles, train_labels) = augmentation_settings.augment(
-                train_smiles, train_labels
+                train_smiles, train_labels, n_jobs=self._n_jobs, verbose=self._verbose
             )
             self._metadata["augmentation_settings"] = augmentation_settings.to_dict()
         else:

@@ -1,6 +1,6 @@
 """Submodule handling the configuration of the augmentation settings for the dataset."""
 
-from typing import Dict, List, Tuple, Type, Iterator
+from typing import Dict, List, Tuple, Type, Iterator, Optional
 import numpy as np
 from hammer.training.augmentation_strategies import (
     AugmentationStrategy,
@@ -84,14 +84,23 @@ class AugmentationSettings:
                 yield strategy_class
 
     def augment(
-        self, smiles: List[str], labels: Dict[str, np.ndarray]
+        self,
+        smiles: List[str],
+        labels: Dict[str, np.ndarray],
+        n_jobs: Optional[int] = None,
+        verbose: bool = True,
     ) -> Tuple[List[str], Dict[str, np.ndarray]]:
         """Augment the dataset."""
         if not self.includes_augmentations():
             return smiles, labels
 
         all_augmented_smiles: List[List[List[str]]] = [
-            strategy().augment_all(smiles) for strategy in self.iter_augmentations()
+            strategy_class(
+                maximal_number=self._augmentations[strategy_class.pythonic_name()],
+                n_jobs=n_jobs,
+                verbose=verbose,
+            ).augment_all(smiles)
+            for strategy_class in self.iter_augmentations()
         ]
 
         # Flatten the list of lists, ensuring no duplicates

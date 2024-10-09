@@ -20,31 +20,27 @@ class StereoisomersAugmentationStrategy(AugmentationStrategy):
 
     def __init__(
         self,
-        maximal_number_of_stereoisomers: int = 64,
-        only_stereo_groups: bool = True,
-        verbose: bool = True,
+        maximal_number: int = 64,
         n_jobs: int = None,
+        verbose: bool = True,
     ):
         """
 
         Parameters
         ----------
-        maximal_number_of_stereoisomers: int = 64
+        maximal_number: int = 64
             The maximal number of stereoisomers to generate.
-        only_stereo_groups: bool = True
-            Only find stereoisomers that differ at the StereoGroups associated with the molecule.
-        verbose: bool = True
-            Whether to display a progress bar.
         n_jobs: Optional[int] = None
             The number of jobs to use for parallel processing.
+        verbose: bool = True
+            Whether to display a progress bar.
         """
         self._stereo_options = StereoEnumerationOptions(
             tryEmbedding=False,
-            onlyStereoGroups=only_stereo_groups,
+            onlyStereoGroups=True,
             unique=True,
-            maxIsomers=maximal_number_of_stereoisomers,
+            maxIsomers=maximal_number,
         )
-        self._maximal_number_of_stereoisomers = maximal_number_of_stereoisomers
         self._verbose = verbose
         self._n_jobs = n_jobs
 
@@ -79,8 +75,6 @@ class StereoisomersAugmentationStrategy(AugmentationStrategy):
                     MolFromSmiles(smiles), options=self._stereo_options
                 )
             ]
-
-            assert len(augmented_smiles) <= self._maximal_number_of_stereoisomers
 
             # Ensure the original SMILES is not in the list of augmented SMILES
             if smiles in augmented_smiles:

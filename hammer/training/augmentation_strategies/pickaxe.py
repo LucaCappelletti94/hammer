@@ -3,7 +3,7 @@
 from typing import List
 import compress_json
 from tqdm.auto import tqdm
-
+import random
 from hammer.training.augmentation_strategies.augmentation_strategy import (
     AugmentationStrategy,
 )
@@ -12,16 +12,25 @@ from hammer.training.augmentation_strategies.augmentation_strategy import (
 class PickaxeAugmentationStrategy(AugmentationStrategy):
     """Generate molecules from a precomputed Pickaxe file."""
 
-    def __init__(self, pickaxe_path: str, verbose: bool = True):
+    def __init__(
+        self,
+        maximal_number: int = 64,
+        n_jobs: int = None,
+        verbose: bool = True
+    ):
         """
         Parameters
         ----------
-        pickaxe_path: str
-            The path to the pickaxe file.
+        maximal_number: int = 64
+            The maximal number of molecules to generate.
+        n_jobs: int = None
+            The number of jobs to use for parallel processing.
         verbose: bool = True
             Whether to display a progress
         """
-        self._pickaxe = compress_json.load(pickaxe_path)
+        self._pickaxe = compress_json.local_load("pickaxe_normalized.json.xz")
+        self._maximal_number = maximal_number
+        self._n_jobs = n_jobs
         self._verbose = verbose
 
     def name(self) -> str:
@@ -40,7 +49,11 @@ class PickaxeAugmentationStrategy(AugmentationStrategy):
 
     def augment(self, smiles: str) -> List[str]:
         """Augment a smiles."""
-        return self._pickaxe.get(smiles, [])
+        smiles = self._pickaxe.get(smiles, [])
+        if len(smiles) > self._maximal_number:
+            random.shuffle(smiles)
+            smiles = smiles[: self._maximal_number]
+        return smiles
 
     def augment_all(self, smiles: List[str]) -> List[List[str]]:
         """Augment a list of smiles."""

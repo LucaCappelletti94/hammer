@@ -19,8 +19,8 @@ def build_augmentation_settings_from_namespace(namespace: Namespace) -> Augmenta
     """Build the augmentation settings from the namespace."""
     settings = AugmentationSettings()
     for strategy_class in STRATEGIES:
-        if hasattr(namespace, f"include-{strategy_class.pythonic_name()}"):
+        if hasattr(namespace, f"include_{strategy_class.pythonic_name()}"):
             value = getattr(namespace, f"include_{strategy_class.pythonic_name()}")
             if value > 0:
-                settings.include_strategy_class(value)
+                getattr(settings, f"include_{strategy_class.pythonic_name()}")(value)
     return settings

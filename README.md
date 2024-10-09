@@ -26,12 +26,26 @@ This will generate a set of plots that show the distribution of the features use
 
 ## Feature sets evaluation
 
-To evaluate the feature sets used in the model, you can run the following command. This will perform a 10-fold cross-validation evaluation of the feature sets, using as augmentation 64 molecules generated using the precomputed Pickaxe rules, 16 tautomers, and 16 stereoisomers. We limit the number of molecules to augment so that no sample is multiplied an excessive number of times. The performance for all holdouts and all considered features will be saved in the `feature_sets_evaluation.csv` file, while the barplots will be saved in the `feature_sets_evaluation_barplots` directory.
+To evaluate the feature sets used in the model, you can run the following command. This will perform a 10-fold cross-validation evaluation of the feature sets. The performance for all holdouts and all considered features will be saved in the `feature_sets_evaluation.csv` file, while the barplots will be saved in the `feature_sets_evaluation_barplots` directory.
 
-The dataset is split using first a stratified split by the rarest class, then subsequently `holdouts` number of stratified Monte Carlo splits into sub-training and validation. It is this the sub-training set that is augmented with the generated molecules, which grows from an initial set of `~50k` samples to `1.5M` samples. The augmentation strategies used are designed to keep the pathways, superclasses and classes of the augmented smiles unchanged. **The test set is not touched during this evaluation process, as we will use it to evaluate the model over the selected feature set.**
+The dataset is split using first a stratified split by the rarest class, then subsequently `holdouts` number of stratified Monte Carlo splits into sub-training and validation. **The test set is not touched during this evaluation process, as we will use it to evaluate the model over the selected feature set.**
 
 The model used for these evaluations is the same Hammer model that is used for the predictions, changing only the number of input feature sets.
 
 ```bash
-hammer feature-sets-evaluation --verbose --holdouts 10 --include-pickaxe 64 --include-tautomers 16 --include-stereoisomers 16 --performance-path "feature_sets_evaluation.csv" --barplot-directory "feature_sets_evaluation_barplots"
+hammer feature-sets-evaluation \
+    --verbose \
+    --holdouts 10 \
+    --performance-path "feature_sets_evaluation.csv" \
+    --barplot-directory "feature_sets_evaluation_barplots"
+```
+
+## DAG Coverage
+
+One of the goals of this project is to, over time and with the help of the community, increase the overall number of pathways, superclasses, and classes that the model can predict. The model employs as a form of static attention a DAG that harmonizes the predictions of the different tasks. At this time, the dataset we are using **DOES NOT** cover all of the combinations of pathways, superclasses and classes that the DAG allows for. We aim to increase the coverage of the DAG over time, and we welcome contributions to the dataset that can help us achieve this goal. *We are starting out from the dataset made available by [NP Classifier](https://github.com/mwang87/NP-Classifier).*
+
+You can compute a summary of the coverage of the DAG using the following command:
+
+```bash
+TODO!
 ```

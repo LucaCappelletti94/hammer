@@ -219,7 +219,7 @@ class Classifier:
             hidden = BatchNormalization(
                 name=f"layer_normalization_{input_layer.name}_{i}"
             )(hidden)
-        hidden = Dropout(0.4)(hidden)
+        hidden = Dropout(0.3)(hidden)
 
         return hidden
 
@@ -239,7 +239,7 @@ class Classifier:
             hidden = BatchNormalization(
                 name=f"layer_normalization_hidden_{i}",
             )(hidden)
-        hidden = Dropout(0.4)(hidden)
+        hidden = Dropout(0.3)(hidden)
         return hidden
 
     def _build_pathway_head(self, hidden_output: tf.Tensor) -> tf.Tensor:
@@ -367,7 +367,7 @@ class Classifier:
         self._build()
         self._model.compile(
             optimizer=Adam(),
-            loss="binary_focal_crossentropy",
+            loss="binary_crossentropy",
             metrics={
                 "pathway": get_minimal_multiclass_metrics(),
                 "superclass": get_minimal_multiclass_metrics(),

@@ -231,6 +231,22 @@ class Dataset:
         )
         self._verbose = verbose
 
+    def iter_label_triples(self) -> Iterator[Tuple[str, str, str]]:
+        """Iterate over the triples (class, superclass, pathway) in the dataset."""
+        for (
+            pathway_indices,
+            superclass_indices,
+            class_indices,
+        ) in zip(self._pathway_indices, self._superclass_indices, self._class_indices):
+            for pathway_index in pathway_indices:
+                for superclass_index in superclass_indices:
+                    for class_index in class_indices:
+                        yield (
+                            self._class_names[class_index],
+                            self._superclass_names[superclass_index],
+                            self._pathway_names[pathway_index],
+                        )
+
     @property
     def pathway_names(self) -> List[str]:
         """Return the pathway names."""

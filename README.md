@@ -47,5 +47,16 @@ One of the goals of this project is to, over time and with the help of the commu
 You can compute a summary of the coverage of the DAG using the following command:
 
 ```bash
-TODO!
+hammer dag-coverage --verbose
 ```
+
+At the time of writing, the coverage of the DAG is as follows:
+
+| label                    |   number |   percentage |
+|:-------------------------|---------:|-------------:|
+| Classes only in DAG      |      132 |      18.9655 |
+| Superclasses only in DAG |        8 |      10.3896 |
+| Pathways only in DAG     |        0 |       0      |
+| Triples only in DAG      |      334 |      36.3043 |
+
+

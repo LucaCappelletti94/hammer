@@ -8,7 +8,7 @@ def add_augmentation_settings_arguments(parser: ArgumentParser) -> ArgumentParse
     """Add arguments for augmentation settings to the parser."""
     for strategy_class in STRATEGIES:
         parser.add_argument(
-            f"--include_{strategy_class.pythonic_name()}",
+            f"--include-{strategy_class.pythonic_name()}",
             type=int,
             default=0,
             help=strategy_class.argparse_description(),
@@ -19,7 +19,7 @@ def build_augmentation_settings_from_namespace(namespace: Namespace) -> Augmenta
     """Build the augmentation settings from the namespace."""
     settings = AugmentationSettings()
     for strategy_class in STRATEGIES:
-        if hasattr(namespace, f"include_{strategy_class.pythonic_name()}"):
+        if hasattr(namespace, f"include-{strategy_class.pythonic_name()}"):
             value = getattr(namespace, f"include_{strategy_class.pythonic_name()}")
             if value > 0:
                 settings.include_strategy_class(value)

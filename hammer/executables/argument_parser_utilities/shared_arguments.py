@@ -18,12 +18,6 @@ def add_shared_arguments(parser: ArgumentParser) -> ArgumentParser:
         help="The number of jobs to use for parallel processing.",
     )
     parser.add_argument(
-        "--cached",
-        action="store_true",
-        default=False,
-        help="Whether to cache the partial results.",
-    )
-    parser.add_argument(
         "--smoke-test",
         action="store_true",
         default=False,

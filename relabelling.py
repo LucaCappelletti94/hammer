@@ -24,8 +24,6 @@ def get_classifications(smiles: str) -> Dict:
         f"https://npclassifier.gnps2.org/classify?smiles={smiles}",
         timeout=10,
     )
-    print(smiles)
-    print(response.text)
     sleep(1)
     
     return response.json()
@@ -33,18 +31,18 @@ def get_classifications(smiles: str) -> Dict:
 
 def relabelling():
 
-    df = pd.read_csv("np_classifier/training/categorical.csv")
+    df = pd.read_csv("hammer/training/categorical.csv")
 
     df = df[df.class_label == "RiPPs"]
 
     smiles = [smiles for smiles in df["smiles"]]
 
     # We exclude smiles that have alredy been manually relabelled
-    # in the file np_classifier/training/multi_label.json
+    # in the file hammer/training/multi_label.json
 
     manual_relabelled = [
         entry["smiles"]
-        for entry in compress_json.load("np_classifier/training/multi_label.json")
+        for entry in compress_json.load("hammer/training/multi_label.json")
     ]
 
     smiles = [s for s in smiles if s not in manual_relabelled]
@@ -62,7 +60,7 @@ def relabelling():
             }
         )
 
-    compress_json.dump(reports, "np_classifier/training/relabelled.json")
+    compress_json.dump(reports, "hammer/training/relabelled.json")
 
 
 if __name__ == "__main__":

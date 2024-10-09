@@ -175,3 +175,5 @@ avalon_fingerprint.csv
 pickaxe.json.gz
 cache
 *.tar.gz
+holdout_*
+histories

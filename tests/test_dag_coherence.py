@@ -18,18 +18,18 @@ def test_dag_coherence():
     is coherent with the available data.
     """
     # smiles,pathway_label,superclass_label,class_label
-    categorical = pd.read_csv("np_classifier/training/categorical.csv.gz")
+    categorical = pd.read_csv("hammer/training/categorical.csv.gz")
 
     # Load the DAG
-    dag = compress_json.load("np_classifier/training/dag.json")
+    dag = compress_json.load("hammer/training/dag.json")
 
     for row in categorical.itertuples():
         assert row.superclass_label in dag["classes"][row.class_label]
         assert row.pathway_label in dag["superclasses"][row.superclass_label]
 
     multilabel = compress_json.load(
-        "np_classifier/training/multi_label.json"
-    ) + compress_json.load("np_classifier/training/relabelled.json")
+        "hammer/training/multi_label.json"
+    ) + compress_json.load("hammer/training/relabelled.json")
 
     for row in multilabel:
         possible_superclasses = set()
@@ -42,4 +42,6 @@ def test_dag_coherence():
         for superclass_label in row["superclass_labels"]:
             possible_pathways.update(dag["superclasses"][superclass_label])
         for pathway_label in row["pathway_labels"]:
-            assert pathway_label in possible_pathways, f"Sample not compatible with DAG! {row}"
+            assert (
+                pathway_label in possible_pathways
+            ), f"Sample not compatible with DAG! {row}"

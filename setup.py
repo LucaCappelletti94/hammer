@@ -1,4 +1,4 @@
-"""Setup for the np_classifier package."""
+"""Setup for the Mjolnir package."""
 
 import os
 import re
@@ -24,7 +24,7 @@ def find_version(*file_paths):
     raise RuntimeError("Unable to find version string.")
 
 
-__version__ = find_version("np_classifier", "__version__.py")
+__version__ = find_version("hammer", "__version__.py")
 
 test_deps = [
     "pytest",
@@ -38,14 +38,13 @@ extras = {
 }
 
 setup(
-    name="np_classifier",
+    name="hammer",
     version=__version__,
-    description="Python wrapper on NP Classifier, a tool for predicting natural product classes, superclasses and pathways.",
+    description="ML utilities for natural products classification",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/LucaCappelletti94/np_classifier",
+    url="https://github.com/LucaCappelletti94/hammer",
     author="LucaCappelletti94",
-    author_email="cappelletti.luca94@gmail.com",
     license="MIT",
     include_package_data=True,
     classifiers=[
@@ -60,7 +59,6 @@ setup(
         "downloaders",
         "compress_json",
         "rdkit",
-        "map4",
         "tensorflow",
         "numpy",
         "scikit-learn",
@@ -69,7 +67,12 @@ setup(
         "pydot",
         "scikit-fingerprints",
         "extra-keras-metrics",
-        "compress_pickle"
+        "compress_pickle",
     ],
     extras_require=extras,
+    entry_points={
+        "console_scripts": [
+            "hammer=hammer.executables.dispatcher:dispatcher",
+        ],
+    },
 )

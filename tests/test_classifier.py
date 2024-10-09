@@ -1,6 +1,6 @@
 """Submodule to test the execution of the NP Classifier."""
 
-from np_classifier import Classifier
+from hammer import Classifier
 
 
 def test_classifier():
@@ -14,6 +14,6 @@ def test_classifier():
 
     smiles = "O=C1c3c(O/C(=C1/O)c2ccc(O)c(O)c2)cc(O)cc3O"  # Quercetin
     # Classify the molecule
-    classification = classifier.predict_smile(smiles)
+    classification = classifier.predict_proba([smiles])
 
     print(classification)

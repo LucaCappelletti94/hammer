@@ -1,2 +1,7 @@
 include LICENSE
-include np_classifier/training/dag.json
+include hammer/training/models.json
+include hammer/training/multi_label.json
+include hammer/training/relabelled.json
+include hammer/training/categorical.csv.gz
+include hammer/training/dag.json
+include hammer/training/features/sugar_smarts.json

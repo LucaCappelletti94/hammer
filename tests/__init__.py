@@ -1,1 +1,1 @@
-"""Pytest suite for the np_classifier package."""
+"""Pytest suite for the hammer package."""

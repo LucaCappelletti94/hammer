@@ -17,8 +17,10 @@ pip install .
 To visualize the features used in the model, you can run the following command:
 
 ```bash
-hammer visualize --verbose
+hammer visualize --verbose --output-directory "data_visualizations" --image-format "png"
 ```
+
+This will generate a set of plots that show the distribution of the features used in the model. The plots will be saved in the `data_visualizations` directory in the `png` format. You can change the output directory and image format by changing the `--output-directory` and `--image-format` arguments, respectively.
 
 ## Feature sets evaluation
 

@@ -76,7 +76,7 @@ def _visualize_feature(
     # Next, we finish the reduction to 2 dimensions with t-SNE
     x_tsne: np.ndarray = tsne.fit_transform(x_reduced)
 
-    fig, ax = plt.subplots(ncols=3, nrows=2, figsize=(21, 14), dpi=120)
+    fig, ax = plt.subplots(ncols=3, nrows=2, figsize=(21, 14), dpi=200)
 
     for i, (decomposition, decomposition_name) in enumerate(
         [(x_pca, "PCA"), (x_tsne, "t-SNE")]

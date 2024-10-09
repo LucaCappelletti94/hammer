@@ -10,7 +10,7 @@ from tensorflow.keras.layers import (  # pylint: disable=no-name-in-module,impor
     Layer,  # pylint: disable=no-name-in-module,import-error
     Input,  # pylint: disable=no-name-in-module,import-error
     Dense,  # pylint: disable=no-name-in-module,import-error
-    LayerNormalization,  # pylint: disable=no-name-in-module,import-error
+    BatchNormalization,  # pylint: disable=no-name-in-module,import-error
     Dropout,  # pylint: disable=no-name-in-module,import-error
     Multiply,  # pylint: disable=no-name-in-module,import-error
 )
@@ -216,10 +216,10 @@ class Classifier:
                 kernel_initializer=HeNormal(),
                 name=f"dense_{input_layer.name}_{i}",
             )(hidden)
-            hidden = LayerNormalization(
+            hidden = BatchNormalization(
                 name=f"layer_normalization_{input_layer.name}_{i}"
             )(hidden)
-        hidden = Dropout(0.3)(hidden)
+        hidden = Dropout(0.4)(hidden)
 
         return hidden
 
@@ -236,10 +236,10 @@ class Classifier:
                 kernel_initializer=HeNormal(),
                 name=f"dense_hidden_{i}",
             )(hidden)
-            hidden = LayerNormalization(
+            hidden = BatchNormalization(
                 name=f"layer_normalization_hidden_{i}",
             )(hidden)
-        hidden = Dropout(0.3)(hidden)
+        hidden = Dropout(0.4)(hidden)
         return hidden
 
     def _build_pathway_head(self, hidden_output: tf.Tensor) -> tf.Tensor:

@@ -14,13 +14,15 @@ pip install .
 
 ## Feature visualization
 
-To visualize the features used in the model, you can run the following command:
+To visualize the features used in the model using PCA and t-SNE, you can run the following command:
 
 ```bash
 hammer visualize --verbose --output-directory "data_visualizations" --image-format "png"
 ```
 
-This will generate a set of plots that show the distribution of the features used in the model. The plots will be saved in the `data_visualizations` directory in the `png` format. You can change the output directory and image format by changing the `--output-directory` and `--image-format` arguments, respectively.
+This will generate a set of plots that show the distribution of the features used in the model. The plots will be saved in the `data_visualizations` directory in the `png` format. You can change the output directory and image format by changing the `--output-directory` and `--image-format` arguments, respectively. The resulting plots will look like the following (this one illustrates the t-SNE and PCA decomposition of the Topological Torsion 1024 bits):
+
+[![Topological Torsion (1024 bits)](https://github.com/LucaCappelletti94/hammer/blob/main/data_visualizations/Topological%20Torsion%20(1024b).png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/data_visualizations)
 
 ## Feature sets evaluation
 

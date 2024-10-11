@@ -2236,11 +2236,11 @@
         ],
         "Stilbenoids": [
             "Shikimates and Phenylpropanoids",
-            "Polyketides",
-            "Terpenoids"
+            "Polyketides"
         ],
         "Isoflavonoids": [
-            "Shikimates and Phenylpropanoids"
+            "Shikimates and Phenylpropanoids",
+            "Polyketides"
         ],
         "Monoterpenoids": [
             "Terpenoids"

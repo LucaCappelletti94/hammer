@@ -35,8 +35,9 @@ The model used for these evaluations is the same Hammer model that is used for t
 ```bash
 hammer feature-sets-evaluation \
     --verbose \
-    --holdouts 10 \
+    --holdouts 5 \
     --performance-path "feature_sets_evaluation.csv" \
+    --training-directory "feature_selection_training" \
     --barplot-directory "feature_sets_evaluation_barplots"
 ```
 

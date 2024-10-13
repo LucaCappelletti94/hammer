@@ -13,10 +13,7 @@ class PickaxeAugmentationStrategy(AugmentationStrategy):
     """Generate molecules from a precomputed Pickaxe file."""
 
     def __init__(
-        self,
-        maximal_number: int = 64,
-        n_jobs: int = None,
-        verbose: bool = True
+        self, maximal_number: int = 64, n_jobs: int = None, verbose: bool = True
     ):
         """
         Parameters

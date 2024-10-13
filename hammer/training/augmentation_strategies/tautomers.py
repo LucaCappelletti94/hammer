@@ -91,7 +91,7 @@ class TautomersAugmentationStrategy(AugmentationStrategy):
             )
             pool.close()
             pool.join()
-        
+
         RDLogger.EnableLog("rdApp.*")
 
         return results

@@ -220,9 +220,7 @@ class Dataset(Hashable):
         least_common_class_labels = np.fromiter(
             (
                 min(
-                    np.argwhere(leaf_layer_train_labels[training_sample_index])[
-                        :, 0
-                    ],
+                    np.argwhere(leaf_layer_train_labels[training_sample_index])[:, 0],
                     key=lambda i: leaf_counts[i],
                 )
                 for training_sample_index in range(len(train_smiles))

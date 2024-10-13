@@ -24,7 +24,7 @@ from hammer.training.features import (
     AtomPairFingerprint,
     TopologicalTorsionFingerprint,
     RDKitFingerprint,
-    MAP4
+    MAP4,
 )
 
 FEATURES: List[Type[FeatureInterface]] = [
@@ -47,7 +47,7 @@ FEATURES: List[Type[FeatureInterface]] = [
     MACCSFingerprint,
     TopologicalTorsionFingerprint,
     RDKitFingerprint,
-    MAP4
+    MAP4,
 ]
 
 

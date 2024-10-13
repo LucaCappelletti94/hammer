@@ -27,5 +27,5 @@ __all__ = [
     "add_shared_arguments",
     "add_dataset_arguments",
     "build_dataset_from_namespace",
-    "add_model_selection_arguments"
+    "add_model_selection_arguments",
 ]

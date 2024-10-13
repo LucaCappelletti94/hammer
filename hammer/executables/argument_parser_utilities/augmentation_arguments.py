@@ -15,7 +15,10 @@ def add_augmentation_settings_arguments(parser: ArgumentParser) -> ArgumentParse
         )
     return parser
 
-def build_augmentation_settings_from_namespace(namespace: Namespace) -> AugmentationSettings:
+
+def build_augmentation_settings_from_namespace(
+    namespace: Namespace,
+) -> AugmentationSettings:
     """Build the augmentation settings from the namespace."""
     settings = AugmentationSettings()
     for strategy_class in STRATEGIES:

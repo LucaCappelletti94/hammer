@@ -30,6 +30,7 @@ def compute_dag_coverage(args: Namespace) -> None:
 
     dataframe: pd.DataFrame = pd.DataFrame(
         {
+            "Dataset": [args.dataset for _ in range(len(layer_coverages) + 1)],
             "Layer": list(layer_coverages.keys()) + ["DAG"],
             "Coverage": list(layer_coverages.values()) + [dag_coverage],
         }

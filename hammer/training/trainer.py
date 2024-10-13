@@ -4,7 +4,6 @@ import os
 import gc
 from typing import Optional, Type
 import pandas as pd
-import silence_tensorflow.auto  # pylint: disable=unused-import
 import tensorflow as tf
 from tensorflow.keras.backend import (  # pylint: disable=no-name-in-module, import-error
     clear_session,  # pylint: disable=no-name-in-module, import-error

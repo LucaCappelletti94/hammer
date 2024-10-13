@@ -4,7 +4,6 @@ import os
 from collections import Counter
 from typing import Type, List, Dict
 from argparse import Namespace
-import silence_tensorflow.auto  # pylint: disable=unused-import
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm

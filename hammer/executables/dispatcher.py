@@ -10,7 +10,6 @@ This utility will dispatch the command to the appropriate sub-command.
 """
 
 from argparse import ArgumentParser, Namespace
-import silence_tensorflow.auto  # pylint: disable=unused-import
 from hammer.executables.feature_sets_evaluation import (
     add_feature_sets_evaluation_subcommand,
 )

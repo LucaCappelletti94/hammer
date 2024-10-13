@@ -58,7 +58,6 @@ Executing this command will generate the barplots [you can find in this director
 
 [![AUPRC barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_evaluation_barplots/class_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots)
 
-
 It is also possible to run the `feature-sets-evaluation` on a subset of features:
 
 ```bash
@@ -86,9 +85,9 @@ hammer dag-coverage --dataset NPC --verbose
 
 At the time of writing, the coverage of the DAG is as follows:
 
-| Layer        |   Coverage |
-|:-------------|-----------:|
-| pathways     |   1        |
-| superclasses |   0.922078 |
-| classes      |   0.941092 |
-| DAG          |   0.822319 |
+| Dataset   | Layer        |   Coverage |
+|:----------|:-------------|-----------:|
+| NPC       | pathways     |   1        |
+| NPC       | superclasses |   0.922078 |
+| NPC       | classes      |   0.938129 |
+| NPC       | DAG          |   0.819761 |

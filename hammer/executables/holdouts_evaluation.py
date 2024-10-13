@@ -2,7 +2,6 @@
 
 from typing import Optional
 from argparse import Namespace
-import silence_tensorflow.auto  # pylint: disable=unused-import
 import pandas as pd
 import tensorflow as tf
 from hammer.training import (

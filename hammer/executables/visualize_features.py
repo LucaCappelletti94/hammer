@@ -8,12 +8,14 @@ import silence_tensorflow.auto  # pylint: disable=unused-import
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
+from rdkit.Chem.rdchem import Mol
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import RobustScaler
 from MulticoreTSNE import MulticoreTSNE
 from matplotlib.colors import TABLEAU_COLORS
 from hammer.training import (
     Dataset,
+    LayeredDAG,
     AugmentationSettings,
     FeatureSettings,
     FeatureInterface,
@@ -24,14 +26,17 @@ from hammer.executables.argument_parser_utilities import (
     add_features_arguments,
     build_features_settings_from_namespace,
     add_shared_arguments,
+    add_dataset_arguments,
+    build_dataset_from_namespace,
 )
+from hammer.utils import smiles_to_molecules, into_canonical_smiles
 
 
 TABLEAU_COLORS: List[str] = list(TABLEAU_COLORS.values())
 
 
 def _visualize_feature(
-    smiles: List[str],
+    molecules: List[Mol],
     labels: Dict[str, np.ndarray],
     most_common: Dict[str, np.ndarray],
     top: Dict[str, List[str]],
@@ -39,14 +44,14 @@ def _visualize_feature(
     arguments: Namespace,
 ):
     """Visualize a feature."""
-    assert isinstance(smiles, list)
+    assert isinstance(molecules, list)
     assert isinstance(labels, dict)
     assert isinstance(most_common, dict)
     assert isinstance(top, dict)
     assert issubclass(feature.__class__, FeatureInterface)
     assert isinstance(arguments, Namespace)
 
-    x: np.ndarray = feature.transform_molecules(smiles)
+    x: np.ndarray = feature.transform_molecules(molecules)
 
     if not feature.__class__.is_binary():
         x = RobustScaler().fit_transform(x)
@@ -129,9 +134,11 @@ def add_visualize_features_subcommand(sub_parser_action: "SubParserAction"):
         "visualize", help="Visualize the features of the dataset."
     )
 
-    visualize_features_parser = add_features_arguments(
-        add_shared_arguments(
-            add_augmentation_settings_arguments(visualize_features_parser)
+    visualize_features_parser = add_dataset_arguments(
+        add_features_arguments(
+            add_shared_arguments(
+                add_augmentation_settings_arguments(visualize_features_parser)
+            )
         )
     )
 
@@ -158,15 +165,8 @@ def add_visualize_features_subcommand(sub_parser_action: "SubParserAction"):
 def visualize(arguments: Namespace):
     """Train the model."""
 
-    if arguments.smoke_test:
-        maximal_number_of_molecules = 2000
-    else:
-        maximal_number_of_molecules = None
-
-    dataset = Dataset(
-        maximal_number_of_molecules=maximal_number_of_molecules,
-        verbose=arguments.verbose,
-    )
+    dataset: Type[Dataset] = build_dataset_from_namespace(namespace=arguments)
+    dag: Type[LayeredDAG] = dataset.layered_dag()
     smiles, labels = dataset.all_smiles()
 
     # We construct the augmentation strategies from the argument parser.
@@ -188,97 +188,61 @@ def visualize(arguments: Namespace):
 
     for label_name, label_values in labels.items():
         counters[label_name] = Counter()
+        layer: List[str] = dag.get_layer(label_name)
         for smile_labels in label_values:
             for i, smile_label in enumerate(smile_labels):
                 if smile_label == 1:
-                    if label_name == "pathway":
-                        counters[label_name].update([dataset.pathway_names[i]])
-                    elif label_name == "superclass":
-                        counters[label_name].update([dataset.superclass_names[i]])
-                    elif label_name == "class":
-                        counters[label_name].update([dataset.class_names[i]])
+                    counters[label_name].update([layer[i]])
 
     # Since we can't possibly show all of the superclasses and classes,
     # we will only show the top 'number of colors' of each. Some samples will have multiple
     # pathways, superclasses and classes, so we will only show the most common ones.
     number_of_colors = len(TABLEAU_COLORS)
 
-    # We determine the top 'number_of_colors - 1' most common pathways, superclasses and classes
-    top_pathways = sorted(
-        counters["pathway"], key=lambda x: counters["pathway"][x], reverse=True
-    )[: number_of_colors - 1]
-    top_superclasses = sorted(
-        counters["superclass"], key=lambda x: counters["superclass"][x], reverse=True
-    )[: number_of_colors - 1]
-    top_classes = sorted(
-        counters["class"], key=lambda x: counters["class"][x], reverse=True
-    )[: number_of_colors - 1]
+    # We determine the top 'number_of_colors - 1' most common labels
+
+    top_labels: Dict[str, List[str]] = {}
+    for layer_name in dag.get_layer_names():
+        top_labels[layer_name] = sorted(
+            counters[layer_name], key=lambda x: counters[layer_name][x], reverse=True
+        )[: number_of_colors - 1]
 
     # Plus one for "Other"
-    if len(counters["pathway"]) > number_of_colors - 1:
-        top_pathways.append("Other")
-    if len(counters["superclass"]) > number_of_colors - 1:
-        top_superclasses.append("Other")
-    if len(counters["class"]) > number_of_colors - 1:
-        top_classes.append("Other")
+    for layer_name in dag.get_layer_names():
+        if len(counters[layer_name]) > number_of_colors - 1:
+            top_labels[layer_name].append("Other")
 
-    top: Dict[str, List[str]] = {
-        "pathway": top_pathways,
-        "superclass": top_superclasses,
-        "class": top_classes,
+    most_common_labels: Dict[str, List[str]] = {
+        layer_name: [] for layer_name in dag.get_layer_names()
     }
-
-    most_common_pathways = []
-    most_common_superclasses = []
-    most_common_classes = []
-    for sub_labels, counter, unique_label_names, most_common, top_labels in [
-        (
-            labels["pathway"],
-            counters["pathway"],
-            dataset.pathway_names,
-            most_common_pathways,
-            top_pathways,
-        ),
-        (
-            labels["superclass"],
-            counters["superclass"],
-            dataset.superclass_names,
-            most_common_superclasses,
-            top_superclasses,
-        ),
-        (
-            labels["class"],
-            counters["class"],
-            dataset.class_names,
-            most_common_classes,
-            top_classes,
-        ),
-    ]:
-        for one_hot_encoded_y in sub_labels:
+    for layer_name in dag.get_layer_names():
+        for one_hot_encoded_y in labels[layer_name]:
             most_common_label = None
             most_common_count = 0
-            for bit, label_name in zip(one_hot_encoded_y, unique_label_names):
-                if bit == 1 and counter[label_name] > most_common_count:
+            for bit, label_name in zip(one_hot_encoded_y, dag.get_layer(layer_name)):
+                if bit == 1 and counters[layer_name][label_name] > most_common_count:
                     most_common_label = label_name
-                    most_common_count = counter[label_name]
+                    most_common_count = counters[layer_name][label_name]
 
             assert most_common_label is not None
 
             try:
-                most_common_index = top_labels.index(most_common_label)
+                most_common_index = top_labels[layer_name].index(most_common_label)
             except ValueError:
                 most_common_index = number_of_colors - 1
-            most_common.append(most_common_index)
+            most_common_labels[layer_name].append(most_common_index)
 
-    most_common_pathways = np.array(most_common_pathways)
-    most_common_superclasses = np.array(most_common_superclasses)
-    most_common_classes = np.array(most_common_classes)
-
-    most_common: Dict[str, np.ndarray] = {
-        "pathway": most_common_pathways,
-        "superclass": most_common_superclasses,
-        "class": most_common_classes,
+    # We convert the most common labels to numpy arrays
+    most_common_labels = {
+        key: np.array(value) for key, value in most_common_labels.items()
     }
+
+    canonical_smiles: List[str] = into_canonical_smiles(
+        smiles, n_jobs=arguments.n_jobs, verbose=arguments.verbose
+    )
+    molecules: List[Mol] = smiles_to_molecules(
+        canonical_smiles, verbose=arguments.verbose, n_jobs=arguments.n_jobs
+    )
 
     for feature_class in tqdm(
         feature_settings.iter_features(),
@@ -289,10 +253,10 @@ def visualize(arguments: Namespace):
         dynamic_ncols=True,
     ):
         _visualize_feature(
-            smiles,
+            molecules,
             labels,
-            most_common,
-            top,
+            most_common_labels,
+            top_labels,
             feature_class(
                 verbose=arguments.verbose,
                 n_jobs=arguments.n_jobs,

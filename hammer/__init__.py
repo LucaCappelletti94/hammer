@@ -1,5 +1,5 @@
 """Python package providing a simplified interface to NP Classifier"""
 
-from hammer.training import Classifier
+from hammer.training import Hammer
 
-__all__ = ["Classifier"]
+__all__ = ["Hammer"]

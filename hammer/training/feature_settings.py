@@ -2,6 +2,7 @@
 
 from typing import Dict, Type, Iterator, List
 import compress_json
+from dict_hash import Hashable, sha256
 from hammer.training.features import (
     FeatureInterface,
     AutocorrelationFingerprint,
@@ -23,6 +24,7 @@ from hammer.training.features import (
     AtomPairFingerprint,
     TopologicalTorsionFingerprint,
     RDKitFingerprint,
+    MAP4
 )
 
 FEATURES: List[Type[FeatureInterface]] = [
@@ -45,10 +47,11 @@ FEATURES: List[Type[FeatureInterface]] = [
     MACCSFingerprint,
     TopologicalTorsionFingerprint,
     RDKitFingerprint,
+    MAP4
 ]
 
 
-class FeatureSettings:
+class FeatureSettings(Hashable):
     """Class defining the features configuration."""
 
     def __init__(self):
@@ -68,6 +71,10 @@ class FeatureSettings:
         raise AttributeError(
             f"{self.__class__.__name__} object has no attribute '{name}'"
         )
+
+    def consistent_hash(self, use_approximation: bool = False) -> str:
+        """Return consistent hash of the current object."""
+        return sha256(self._features_included, use_approximation=use_approximation)
 
     @staticmethod
     def from_dict(features: Dict[str, bool]) -> "FeatureSettings":

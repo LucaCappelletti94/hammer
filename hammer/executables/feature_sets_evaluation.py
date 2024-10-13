@@ -8,10 +8,13 @@ import pandas as pd
 from barplots import barplots
 from hammer.executables.holdouts_evaluation import holdouts_evaluation
 from hammer.training import FeatureSettings
-from hammer.training.feature_settings import FEATURES
 from hammer.executables.argument_parser_utilities import (
     add_shared_arguments,
+    add_features_arguments,
     add_augmentation_settings_arguments,
+    add_dataset_arguments,
+    build_features_settings_from_namespace,
+    add_model_selection_arguments,
 )
 
 
@@ -21,7 +24,13 @@ def add_feature_sets_evaluation_subcommand(sub_parser_action: "SubParsersAction"
         "feature-sets-evaluation",
         help="Evaluate the performance of different feature sets.",
     )
-    subparser = add_augmentation_settings_arguments(add_shared_arguments(subparser))
+    subparser = add_model_selection_arguments(
+        add_features_arguments(
+            add_dataset_arguments(
+                add_augmentation_settings_arguments(add_shared_arguments(subparser))
+            )
+        )
+    )
 
     # Adds an argument for where to store the performance
     subparser.add_argument(
@@ -39,6 +48,14 @@ def add_feature_sets_evaluation_subcommand(sub_parser_action: "SubParsersAction"
         help="Path to store the barplots of the performance.",
     )
 
+    # Adds an argument for where to store the models being trained.
+    subparser.add_argument(
+        "--training-directory",
+        type=str,
+        default="trained_models",
+        help="Path to store the trained models.",
+    )
+
     # Adds an argument for the number of holdouts to execute.
     subparser.add_argument(
         "--holdouts",
@@ -54,10 +71,16 @@ def feature_sets_evaluation(args: Namespace):
     """Evaluate the performance of different feature sets."""
     performance: List[pd.DataFrame] = []
 
+    feature_settings: FeatureSettings = build_features_settings_from_namespace(args)
+
+    if not feature_settings.includes_features():
+        feature_settings = FeatureSettings().include_all()
+
     for feature_class in tqdm(
-        FEATURES,
+        feature_settings.iter_features(),
         desc="Evaluating feature sets",
         unit="feature set",
+        total=feature_settings.number_of_features(),
         leave=False,
         dynamic_ncols=True,
         disable=not args.verbose,
@@ -65,6 +88,7 @@ def feature_sets_evaluation(args: Namespace):
         feature_performance: pd.DataFrame = holdouts_evaluation(
             args,
             feature_settings=FeatureSettings.from_feature_class(feature_class),
+            training_directory=args.training_directory,
             performance_path=None,
         )
 

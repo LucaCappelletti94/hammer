@@ -7,18 +7,19 @@ import pandas as pd
 import tensorflow as tf
 from hammer.training import (
     Trainer,
-    Dataset,
     FeatureSettings,
     AugmentationSettings,
 )
 from hammer.executables.argument_parser_utilities import (
     build_augmentation_settings_from_namespace,
+    build_dataset_from_namespace,
 )
 
 
 def holdouts_evaluation(
     args: Namespace,
     feature_settings: Optional[FeatureSettings] = None,
+    training_directory: str = "trained_models",
     performance_path: Optional[str] = "performance.csv",
 ) -> pd.DataFrame:
     """Train the model."""
@@ -36,18 +37,19 @@ def holdouts_evaluation(
 
     trainer: Trainer = Trainer(
         maximal_number_of_epochs=1 if args.smoke_test else 10_000,
-        smiles_dataset=Dataset(
-            maximal_number_of_molecules=2000 if args.smoke_test else None,
-            number_of_splits=args.holdouts,
-            verbose=args.verbose,
-        ),
+        smiles_dataset=build_dataset_from_namespace(args),
         feature_settings=feature_settings,
         augmentation_settings=augmentation_settings,
+        training_directory=training_directory,
         verbose=args.verbose,
         n_jobs=args.n_jobs,
     )
 
-    performance: pd.DataFrame = trainer.holdouts()
+    performance: pd.DataFrame = trainer.holdouts(
+        number_of_holdouts=args.holdouts,
+        test_size=args.test_size,
+        validation_size=args.validation_size,
+    )
     if performance_path is not None:
         performance.to_csv(performance_path, index=False)
     return performance

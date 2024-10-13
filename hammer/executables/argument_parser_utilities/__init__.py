@@ -11,6 +11,13 @@ from hammer.executables.argument_parser_utilities.features_arguments import (
 from hammer.executables.argument_parser_utilities.shared_arguments import (
     add_shared_arguments,
 )
+from hammer.executables.argument_parser_utilities.dataset_arguments import (
+    add_dataset_arguments,
+    build_dataset_from_namespace,
+)
+from hammer.executables.argument_parser_utilities.model_selectiion_arguments import (
+    add_model_selection_arguments,
+)
 
 __all__ = [
     "add_augmentation_settings_arguments",
@@ -18,4 +25,7 @@ __all__ = [
     "add_features_arguments",
     "build_features_settings_from_namespace",
     "add_shared_arguments",
+    "add_dataset_arguments",
+    "build_dataset_from_namespace",
+    "add_model_selection_arguments"
 ]

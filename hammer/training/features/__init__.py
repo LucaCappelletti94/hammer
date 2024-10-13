@@ -1,6 +1,7 @@
 """Submodule providing molecular features wrappers and implementations."""
 
 from hammer.training.features.feature_interface import FeatureInterface
+from hammer.training.features.map4 import MAP4
 from hammer.training.features.scikit_fingerprints import (
     AtomPairFingerprint,
     AutocorrelationFingerprint,
@@ -44,4 +45,5 @@ __all__ = [
     "MACCSFingerprint",
     "TopologicalTorsionFingerprint",
     "RDKitFingerprint",
+    "MAP4",
 ]

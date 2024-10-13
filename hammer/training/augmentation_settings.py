@@ -2,6 +2,7 @@
 
 from typing import Dict, List, Tuple, Type, Iterator, Optional
 import numpy as np
+from dict_hash import Hashable, sha256
 from hammer.training.augmentation_strategies import (
     AugmentationStrategy,
     PickaxeAugmentationStrategy,
@@ -16,7 +17,7 @@ STRATEGIES: List[Type[AugmentationStrategy]] = [
 ]
 
 
-class AugmentationSettings:
+class AugmentationSettings(Hashable):
     """Class defining the augmentation settings for the dataset."""
 
     def __init__(self):
@@ -26,6 +27,15 @@ class AugmentationSettings:
         for strategy_class in STRATEGIES:
             # We initialize all augmentations as not included
             self._augmentations[strategy_class.pythonic_name()] = 0
+
+    def consistent_hash(self, use_approximation: bool = False) -> str:
+        """Return consistent hash of the current object."""
+        return sha256(
+            {
+                "augmentations": self._augmentations,
+            },
+            use_approximation=use_approximation,
+        )
 
     def _include_augmentation(self, augmentation_name: str, number_of_molecules: int):
         """Include a specific augmentation."""

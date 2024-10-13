@@ -1,8 +1,6 @@
 include LICENSE
 include hammer/training/models.json
-include hammer/training/multi_label.json
-include hammer/training/relabelled.json
-include hammer/training/categorical.csv.gz
-include hammer/training/dag.json
-include hammer/training/features/sugar_smarts.json
+include hammer/training/datasets/npc/categorical.csv.gz
+include hammer/training/datasets/npc/*.json
+include hammer/training/layered_dags/npc/*.json
 include hammer/training/augmentation_strategies/pickaxe_normalized.json.xz

@@ -11,6 +11,8 @@ def test_visualize_features_sub_command():
         [
             "hammer",
             "visualize",
+            "--dataset",
+            "NPC",
             "--verbose",
             "--smoke-test",
             "--output-directory",

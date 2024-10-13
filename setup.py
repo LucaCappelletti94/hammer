@@ -60,6 +60,7 @@ setup(
         "compress_json",
         "rdkit",
         "numpy",
+        "map4",
         "scikit-learn",
         "plot-keras-history",
         "cache_decorator",

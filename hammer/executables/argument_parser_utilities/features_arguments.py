@@ -8,7 +8,7 @@ def add_features_arguments(parser: ArgumentParser) -> ArgumentParser:
     """Add arguments for feature settings to the parser."""
     for feature_class in FEATURES:
         parser.add_argument(
-            f"--include_{feature_class.pythonic_name()}",
+            f"--include-{feature_class.pythonic_name()}",
             action="store_true",
             default=False,
             help=feature_class.argparse_description(),
@@ -23,5 +23,5 @@ def build_features_settings_from_namespace(namespace: Namespace) -> FeatureSetti
         if hasattr(namespace, f"include_{feature_class.pythonic_name()}"):
             value = getattr(namespace, f"include_{feature_class.pythonic_name()}")
             if value:
-                settings.include_feature_class(feature_class)
+                getattr(settings, f"include_{feature_class.pythonic_name()}")()
     return settings

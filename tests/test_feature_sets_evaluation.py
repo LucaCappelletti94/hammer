@@ -11,6 +11,8 @@ def test_feature_sets_evaluation_sub_command():
         [
             "hammer",
             "feature-sets-evaluation",
+            "--dataset",
+            "NPC",
             "--smoke-test",
             "--holdouts",
             "1",

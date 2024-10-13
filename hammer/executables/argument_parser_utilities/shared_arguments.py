@@ -18,6 +18,12 @@ def add_shared_arguments(parser: ArgumentParser) -> ArgumentParser:
         help="The number of jobs to use for parallel processing.",
     )
     parser.add_argument(
+        "--random-state",
+        type=int,
+        default=7345767,
+        help="The random state to use for reproducibility.",
+    )
+    parser.add_argument(
         "--smoke-test",
         action="store_true",
         default=False,

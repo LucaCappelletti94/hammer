@@ -47,10 +47,17 @@ hammer feature-sets-evaluation \
     --verbose \
     --holdouts 5 \
     --dataset NPC \
+    --test-size 0.2 \
+    --validation-size 0.2 \
     --performance-path "feature_sets_evaluation.csv" \
     --training-directory "feature_selection_training" \
     --barplot-directory "feature_sets_evaluation_barplots"
 ```
+
+Executing this command will generate the barplots [you can find in this directory](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots). In the following barplot, you will find the AUPRC for each class, for validation, test a, for each feature set, averaged over all holdouts:
+
+[![AUPRC barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_evaluation_barplots/class_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots)
+
 
 It is also possible to run the `feature-sets-evaluation` on a subset of features:
 
@@ -60,6 +67,8 @@ hammer feature-sets-evaluation \
     --holdouts 5 \
     --dataset NPC \
     --include-map4 \
+    --test-size 0.2 \
+    --validation-size 0.2 \
     --performance-path "map4_feature_evaluation.csv" \
     --training-directory "map4_feature_training" \
     --barplot-directory "map4_feature_evaluation"

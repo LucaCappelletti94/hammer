@@ -3,10 +3,14 @@
 from typing import Optional
 from argparse import Namespace
 import pandas as pd
-import tensorflow as tf
+from environments_utils import has_nvidia_gpu, has_amd_gpu
 from hammer.training import (
     Trainer,
+)
+from hammer.feature_settings import (
     FeatureSettings,
+)
+from hammer.augmentation_settings import (
     AugmentationSettings,
 )
 from hammer.executables.argument_parser_utilities import (
@@ -27,8 +31,7 @@ def holdouts_evaluation(
     )
 
     # We check that a GPU is available, or the training will take a long time
-    gpu_devices = tf.config.experimental.list_physical_devices("GPU")
-    if not gpu_devices and not args.smoke_test:
+    if not (has_nvidia_gpu() or has_amd_gpu()) and not args.smoke_test:
         raise RuntimeError("No GPU detected for training, aborting.")
 
     if feature_settings is None:

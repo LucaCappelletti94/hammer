@@ -15,6 +15,7 @@ from hammer.executables.feature_sets_evaluation import (
 )
 from hammer.executables.visualize_features import add_visualize_features_subcommand
 from hammer.executables.dag_coverage import add_dag_coverage_subcommand
+from hammer.executables.feature_sets_synergy import add_feature_sets_synergy_subcommand
 
 
 def dispatcher():
@@ -23,6 +24,7 @@ def dispatcher():
     subparsers = parser.add_subparsers()
     add_feature_sets_evaluation_subcommand(subparsers)
     add_visualize_features_subcommand(subparsers)
+    add_feature_sets_synergy_subcommand(subparsers)
     add_dag_coverage_subcommand(subparsers)
     args: Namespace = parser.parse_args()
     args.func(args)

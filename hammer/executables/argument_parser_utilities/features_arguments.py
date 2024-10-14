@@ -1,7 +1,7 @@
 """Submodule populating the argument parser with arguments for feature settings."""
 
 from argparse import ArgumentParser, Namespace
-from hammer.training.feature_settings import FeatureSettings, FEATURES
+from hammer.feature_settings import FeatureSettings, FEATURES
 
 
 def add_features_arguments(parser: ArgumentParser) -> ArgumentParser:

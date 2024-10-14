@@ -12,13 +12,11 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import RobustScaler
 from MulticoreTSNE import MulticoreTSNE
 from matplotlib.colors import TABLEAU_COLORS
-from hammer.training import (
-    Dataset,
-    LayeredDAG,
-    AugmentationSettings,
-    FeatureSettings,
-    FeatureInterface,
-)
+from hammer.datasets import Dataset
+from hammer.layered_dags import LayeredDAG
+from hammer.features import FeatureInterface
+from hammer.feature_settings import FeatureSettings
+from hammer.augmentation_settings import AugmentationSettings
 from hammer.executables.argument_parser_utilities import (
     add_augmentation_settings_arguments,
     build_augmentation_settings_from_namespace,
@@ -56,7 +54,6 @@ def _visualize_feature(
         x = RobustScaler().fit_transform(x)
 
     if np.isnan(x).any():
-        print(f"Skipping {feature.name()} due to NaN values")
         return
 
     pca = PCA(n_components=50)

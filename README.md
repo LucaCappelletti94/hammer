@@ -1,8 +1,10 @@
 # 🔨 Hammer
 
-Hammer is a multi-modal multi-task feed-forward neural network that predicts the pathways, classes, and superclasses of natural products based on their molecular structure and physicochemical properties. The classifier leverages a diverse set of molecular fingerprints and descriptors to capture the unique features of natural products and enable accurate predictions across multiple tasks.
+Hammer is a Hierarchical Augmented Multi-modal Multi-task classifiER that, given a SMILE as input, computes selected fingerprints and predicts its associated taxonomical ranking.
 
-The model can be beheaded (remove the output layers) and used either as a feature extractor or as a pre-trained model for transfer learning on other tasks. This package provides also tooling to extract and visualize all of the features used in the model, which can be used to train other models or to perform downstream analyses. **If you intend to use this model for transfer learning, pay attention to not include in your test set SMILEs used for training this model to avoid biasing your evaluations!**
+The classifier can employ a diverse set of molecular fingerprints and descriptors to capture the unique features of the SMILES and enable accurate predictions across multiple tasks.
+
+Furthermore, the model can be beheaded (remove the output layers) and used either as a feature extractor or as a pre-trained model for transfer learning on other tasks. This package provides also tooling to extract and visualize all of the features used in the model, which can be used to train other models or to perform downstream analyses. **If you intend to use this model for transfer learning, pay attention to not include in your test set SMILEs used for training this model to avoid biasing your evaluations!**
 
 ## Installation
 
@@ -12,7 +14,13 @@ This library will be available to install via pip, but for now you can install i
 pip install .
 ```
 
-## Feature visualization
+## Command line interface and usage
+
+While the package can be entirely used as a library, it also provides a command line interface that can be used to perform a variety of tasks and reproduce the experiments that we have conducted or design new ones.
+
+In the following sections, we will describe the usage of the command line interface of the Hammer package. These commands are readily available after installing the package, no additional setup is required.
+
+### Feature visualization
 
 To visualize the features used in the model using PCA and t-SNE, you can run the following command:
 
@@ -34,7 +42,26 @@ hammer visualize --verbose\
     --image-format "png"
 ```
 
-## Feature sets evaluation
+### DAG Coverage
+
+One of the goals of this project is to, over time and with the help of the community, increase the overall number of pathways, superclasses, and classes that the model can predict. The model employs as a form of static attention a DAG that harmonizes the predictions of the different tasks. At this time, the dataset we are using **DOES NOT** cover all of the combinations of pathways, superclasses and classes that the DAG allows for. We aim to increase the coverage of the DAG over time, and we welcome contributions to the dataset that can help us achieve this goal. *We are starting out from the dataset made available by [NP Classifier](https://github.com/mwang87/NP-Classifier).*
+
+You can compute a summary of the coverage of the DAG using the following command:
+
+```bash
+hammer dag-coverage --dataset NPC --verbose
+```
+
+At the time of writing, the coverage of the DAG is as follows:
+
+| Dataset   | Layer        |   Coverage |
+|:----------|:-------------|-----------:|
+| NPC       | pathways     |   1        |
+| NPC       | superclasses |   0.922078 |
+| NPC       | classes      |   0.938129 |
+| NPC       | DAG          |   0.819761 |
+
+### Feature sets evaluation
 
 To evaluate the feature sets used in the model, you can run the following command. This will perform a 10-fold cross-validation evaluation of the feature sets. The performance for all holdouts and all considered features will be saved in the `feature_sets_evaluation.csv` file, while the barplots will be saved in the `feature_sets_evaluation_barplots` directory.
 
@@ -73,21 +100,65 @@ hammer feature-sets-evaluation \
     --barplot-directory "map4_feature_evaluation"
 ```
 
-## DAG Coverage
+### Features sets synergy
 
-One of the goals of this project is to, over time and with the help of the community, increase the overall number of pathways, superclasses, and classes that the model can predict. The model employs as a form of static attention a DAG that harmonizes the predictions of the different tasks. At this time, the dataset we are using **DOES NOT** cover all of the combinations of pathways, superclasses and classes that the DAG allows for. We aim to increase the coverage of the DAG over time, and we welcome contributions to the dataset that can help us achieve this goal. *We are starting out from the dataset made available by [NP Classifier](https://github.com/mwang87/NP-Classifier).*
+After having evaluated the feature sets for a given dataset, it remains open the question of how the feature sets interact with each other. It may very well be that the performance of the model is not simply the sum of the performance of the individual feature sets, but that there is a synergy between them, or that by extending the input space with redoundant features we may actually decrease the performance of the model by excessively increasing the dimensionality of the input space, thus making the model more prone to overfitting.
 
-You can compute a summary of the coverage of the DAG using the following command:
+This approach fixes a subset of the feature sets as the base feature sets, and then iterates on all of the low-dimensionality (less than 1024) feature sets, adding them one by one to the base feature sets. The performance of the model is then evaluated on the validation set, and the performance of the model is saved in the `feature_sets_synergy_training.csv` file, while the barplots will be saved in the `feature_sets_synergy_barplots` directory.
 
 ```bash
-hammer dag-coverage --dataset NPC --verbose
+hammer feature-sets-synergy \
+    --verbose \
+    --holdouts 10 \
+    --dataset NPC \
+    --base-feature-sets "layered" \
+    --test-size 0.2 \
+    --validation-size 0.2 \
+    --performance-path "feature_sets_synergy_with_layered_training.csv" \
+    --training-directory "feature_sets_synergy_with_layered_training" \
+    --barplot-directory "feature_sets_synergy_with_layered_barplots"
 ```
 
-At the time of writing, the coverage of the DAG is as follows:
+For the NPC dataset, we have identified that the secondary feature most synergistic (has the best validation AUPRC) with the base feature sets is the `Van Der Waals Surface Area`, as illustrated in the following barplot:
 
-| Dataset   | Layer        |   Coverage |
-|:----------|:-------------|-----------:|
-| NPC       | pathways     |   1        |
-| NPC       | superclasses |   0.922078 |
-| NPC       | classes      |   0.938129 |
-| NPC       | DAG          |   0.819761 |
+[![Synergy barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_synergy_with_layered_training/class_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_synergy_with_layered_training)
+
+We can now proceed to identify the tertiary feature set that is most synergistic with the base feature sets and the secondary feature set. We cannot simply pick the next secondary feature set that is most synergistic with the base feature sets, as this would not take into account the interaction between the secondary and tertiary feature sets, and the increased dimensionality of the input space. We need to evaluate the performance of the model on the validation set for all possible combinations of the base, secondary and tertiary feature sets, and select the one that has the best performance, if there is still an improvement in the performance of the model.
+
+```bash
+hammer feature-sets-synergy \
+    --verbose \
+    --holdouts 10 \
+    --dataset NPC \
+    --base-feature-sets "layered" "van_der_waals_surface_area" \
+    --test-size 0.2 \
+    --validation-size 0.2 \
+    --performance-path "tertiary_feature_sets_synergy_training.csv" \
+    --training-directory "tertiary_feature_sets_synergy_training" \
+    --barplot-directory "tertiary_feature_sets_synergy_barplots"
+```
+
+## Citation
+
+If you use this model in your research, please cite us:
+
+[TODO: we still need to properly publish the model, so this is a placeholder and will be updated in the future]
+
+```bibtex
+@software{hammer,
+  author = {Cappelletti, Luca, et al.},
+  title = {Hammer: Hierarchical Augmented Multi-modal Multi-task classifiER},
+  year = {2024},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/LucaCappelletti94/hammer}},
+}
+```
+
+## Contributing
+
+If you want to contribute to this project, please read the [CONTRIBUTING](CONTRIBUTING.md) file for details on our code of conduct, and the process for submitting pull requests to us.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -179,3 +179,4 @@ holdout_*
 histories
 .DS_Store
 feature_selection_training
+feature_sets_synergy_training

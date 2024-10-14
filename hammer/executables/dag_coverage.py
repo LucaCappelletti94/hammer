@@ -3,7 +3,7 @@
 from argparse import Namespace
 from typing import Dict, Type
 import pandas as pd
-from hammer.training import Dataset
+from hammer.datasets import Dataset
 from hammer.executables.argument_parser_utilities import (
     add_shared_arguments,
     add_dataset_arguments,

@@ -1,7 +1,7 @@
 """Submodule defining argparse arguments relative to dataset selection and parametrization."""
 
 from argparse import ArgumentParser, Namespace
-from hammer.training.datasets import AVAILABLE_DATASETS
+from hammer.datasets import AVAILABLE_DATASETS
 
 
 def add_dataset_arguments(parser: ArgumentParser) -> ArgumentParser:

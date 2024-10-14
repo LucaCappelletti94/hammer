@@ -1,7 +1,7 @@
 """Submodule populating the argument parser with arguments for augmentation settings."""
 
 from argparse import ArgumentParser, Namespace
-from hammer.training.augmentation_settings import STRATEGIES, AugmentationSettings
+from hammer.augmentation_settings import STRATEGIES, AugmentationSettings
 
 
 def add_augmentation_settings_arguments(parser: ArgumentParser) -> ArgumentParser:

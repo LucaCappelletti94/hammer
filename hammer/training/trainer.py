@@ -4,15 +4,12 @@ import os
 import gc
 from typing import Optional, Type
 import pandas as pd
-import tensorflow as tf
-from tensorflow.keras.backend import (  # pylint: disable=no-name-in-module, import-error
-    clear_session,  # pylint: disable=no-name-in-module, import-error
-)
+from keras.api.backend import clear_session
 from dict_hash import sha256, Hashable
-from hammer.training.datasets import Dataset
-from hammer.training.hammer import Hammer
-from hammer.training.feature_settings import FeatureSettings
-from hammer.training.augmentation_settings import AugmentationSettings
+from hammer.datasets import Dataset
+from hammer.model import Hammer
+from hammer.feature_settings import FeatureSettings
+from hammer.augmentation_settings import AugmentationSettings
 
 
 class Trainer(Hashable):
@@ -37,13 +34,6 @@ class Trainer(Hashable):
         self._verbose = verbose
         self._n_jobs = n_jobs
         self._training_directory: Optional[str] = training_directory
-        gpus = tf.config.experimental.list_physical_devices("GPU")
-        if gpus:
-            try:
-                for gpu in gpus:
-                    tf.config.experimental.set_memory_growth(gpu, True)
-            except RuntimeError as e:
-                print(e)
 
     def consistent_hash(self, use_approximation: bool = False) -> str:
         """Return consistent hash of the current object."""
@@ -94,12 +84,10 @@ class Trainer(Hashable):
                 use_approximation=True,
             )
 
-            path = os.path.join(
-                self._training_directory, f"{holdout_hash}/{holdout_number}"
-            )
+            path = os.path.join(self._training_directory, holdout_hash)
 
             if os.path.exists(path):
-                classifier: Hammer = Hammer.load(path)
+                classifier: Hammer = Hammer.load_from_path(path)
             else:
                 classifier = Hammer(
                     dag=self._smiles_dataset.layered_dag(),

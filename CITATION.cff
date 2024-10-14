@@ -1,0 +1,8 @@
+@software{hammer,
+  author = {Cappelletti, Luca, et al.},
+  title = {Hammer: Hierarchical Augmented Multi-modal Multi-task classifiER},
+  year = {2024},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/LucaCappelletti94/hammer}},
+}

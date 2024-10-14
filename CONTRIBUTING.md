@@ -81,9 +81,9 @@ We value every contribution, whether it’s a small improvement or a major addit
 
 To begin contributing, explore the following resources:
 
-- [Dataset Interface](link1)
-- [DAG Interface](link2)
-- [SMILES Feature Interface](link3)
-- [SMILES Augmentation Interface](link4)
+- [Dataset Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/datasets/smiles_dataset.py)
+- [DAG Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/layered_dags/layered_dag.py)
+- [SMILES Feature Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/features/feature_interface.py)
+- [SMILES Augmentation Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/augmentation_strategies/augmentation_strategy.py)
 
 We encourage you to open an issue if you have a proposal or check out existing issues for potential contribution ideas. We are excited to collaborate with the community to build a high-quality, open-source resource for predictive tasks!

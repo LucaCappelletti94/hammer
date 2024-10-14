@@ -121,7 +121,7 @@ hammer feature-sets-synergy \
 
 For the NPC dataset, we have identified that the secondary feature most synergistic (has the best validation AUPRC) with the base feature sets is the `Van Der Waals Surface Area`, as illustrated in the following barplot:
 
-[![Synergy barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_synergy_with_layered_training/class_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_synergy_with_layered_training)
+[![Synergy barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_synergy_with_layered_training/classes_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_synergy_with_layered_training)
 
 We can now proceed to identify the tertiary feature set that is most synergistic with the base feature sets and the secondary feature set. We cannot simply pick the next secondary feature set that is most synergistic with the base feature sets, as this would not take into account the interaction between the secondary and tertiary feature sets, and the increased dimensionality of the input space. We need to evaluate the performance of the model on the validation set for all possible combinations of the base, secondary and tertiary feature sets, and select the one that has the best performance, if there is still an improvement in the performance of the model.
 

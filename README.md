@@ -83,6 +83,29 @@ hammer feature-sets-evaluation \
 
 Executing this command will generate the barplots [you can find in this directory](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots). In the following barplot, you will find the AUPRC for each class, for validation, test a, for each feature set, averaged over all holdouts:
 
+| **Feature Set**                               | **Mean**   | **Std**    |
+|-----------------------------------------------|------------|------------|
+| Atom Pair (2048b)                             | 0.857813   | 0.002735   |
+| Auto-Correlation                              | 0.811050   | 0.004208   |
+| Avalon (2048b)                                | 0.900124   | 0.003449   |
+| Extended Connectivity (1r, 2048b)             | 0.884863   | 0.003651   |
+| Functional Groups                             | 0.589513   | 0.015186   |
+| Ghose-Crippen                                 | 0.659410   | 0.001983   |
+| Laggner                                       | 0.759160   | 0.012833   |
+| Layered (2048b)                               | 0.898108   | 0.003496   |
+| Lingo (1024b)                                 | 0.837630   | 0.002075   |
+| MACCS                                         | 0.810575   | 0.005415   |
+| MAP4                                          | 0.855033   | 0.005111   |
+| MinHashed (2r, 2048b)                         | 0.839570   | 0.009128   |
+| MinHashed Atom Pair (2r, 2048b)               | 0.301133   | 0.009825   |
+| Molecular Quantum Numbers                     | 0.672846   | 0.008695   |
+| Pattern (2048b)                               | 0.893990   | 0.005862   |
+| PubChem                                       | 0.885968   | 0.003264   |
+| RDKit (2048b)                                 | 0.871136   | 0.008087   |
+| SMILES Extended Connectivity (1r, 2048b)      | 0.827976   | 0.004601   |
+| Topological Torsion (1024b)                   | 0.863581   | 0.002356   |
+| Van Der Waals Surface Area                    | 0.795765   | 0.006069   |
+
 [![AUPRC barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_evaluation_barplots/class_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots)
 
 It is also possible to run the `feature-sets-evaluation` on a subset of features:
@@ -106,6 +129,8 @@ After having evaluated the feature sets for a given dataset, it remains open the
 
 This approach fixes a subset of the feature sets as the base feature sets, and then iterates on all of the low-dimensionality (less than 1024) feature sets, adding them one by one to the base feature sets. The performance of the model is then evaluated on the validation set, and the performance of the model is saved in the `feature_sets_synergy_training.csv` file, while the barplots will be saved in the `feature_sets_synergy_barplots` directory.
 
+We pick the base feature sets as the `layered` feature set, as it is nearly the best performing feature set, and differently from Avalon, we know fully how it is computed while there is no paper for the Avalon fingerprints.
+
 ```bash
 hammer feature-sets-synergy \
     --verbose \
@@ -119,7 +144,18 @@ hammer feature-sets-synergy \
     --barplot-directory "feature_sets_synergy_with_layered_barplots"
 ```
 
-For the NPC dataset, we have identified that the secondary feature most synergistic (has the best validation AUPRC) with the base feature sets is the `Van Der Waals Surface Area`, as illustrated in the following barplot:
+For the NPC dataset, we have identified that the secondary feature most synergistic (has the best validation AUPRC) with the base feature sets and also the smallest feature size is the `Van Der Waals Surface Area`, as illustrated in the following barplot:
+
+| **Feature Set + Layered**       | **Mean**   | **Std**   | **Feature size** |
+|---------------------------------|------------|-----------|------------------|
+| Auto-Correlation                | 0.914921   | 0.002188  | 192              |
+| Functional Groups               | 0.905355   | 0.004740  | 85               |
+| Ghose-Crippen                   | 0.905958   | 0.004123  | 110              |
+| Laggner                         | 0.907647   | 0.004016  | 307              |
+| MACCS                           | 0.906761   | 0.010752  | 166              |
+| Molecular Quantum Numbers       | 0.909889   | 0.003788  | 42               |
+| PubChem                         | 0.913653   | 0.003556  | 881              |
+| Van Der Waals Surface Area      | 0.914309   | 0.004208  | 47               |
 
 [![Synergy barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_synergy_with_layered_training/classes_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_synergy_with_layered_training)
 

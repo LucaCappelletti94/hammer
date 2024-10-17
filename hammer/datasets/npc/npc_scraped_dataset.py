@@ -7,7 +7,7 @@ from hammer.datasets.smiles_dataset import Dataset
 from hammer.datasets.labeled_smiles import LabeledSMILES
 
 
-class NPCSCrapedDataset(Dataset):
+class NPCScrapedDataset(Dataset):
     """Class defining the NPC dataset labelled by running NP Classifier on its own SMILES."""
 
     def __init__(

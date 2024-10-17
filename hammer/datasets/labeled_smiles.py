@@ -40,13 +40,51 @@ class LabeledSMILES(Hashable):
         """Return the labels."""
         return self._labels
 
+    # pylint: disable=protected-access
+    def merge_labels(self, other: "LabeledSMILES") -> "LabeledSMILES":
+        """Merge the labels of the current labeled SMILES with another one."""
+        if self.smiles != other.smiles:
+            raise ValueError("Cannot merge labels of different SMILES.")
+        new_labels = {
+            layer_name: list(
+                set(
+                    self._labels.get(layer_name, []) + other._labels.get(layer_name, [])
+                )
+            )
+            for layer_name in set(self._labels.keys()) | set(other._labels.keys())
+        }
+        return LabeledSMILES(smiles=self.smiles, labels=new_labels)
+
     def least_common_label(self, counters: Counter, leaf_layer_name: str) -> str:
         """Returns the least common label in the leaf layer."""
         return min(self._labels[leaf_layer_name], key=lambda label: counters[label])
 
     def has_missing_labels(self, layer_names: List[str]) -> bool:
         """Returns whether there are missing labels for the given layers."""
-        return any(layer_name not in self._labels for layer_name in layer_names)
+        return any(
+            layer_name not in self._labels or len(self._labels[layer_name]) == 0
+            for layer_name in layer_names
+        )
+
+    # pylint: disable=protected-access
+    def first_discordant_layer(
+        self, other: "LabeledSMILES", layer_names: List[str]
+    ) -> Optional[str]:
+        """Returns the first discordant layer between the two labeled SMILES."""
+        for layer_name in layer_names:
+            if (layer_name not in self._labels and layer_name in other._labels) or (
+                layer_name in self._labels and layer_name not in other._labels
+            ):
+                return layer_name
+            if any(
+                label not in other._labels[layer_name]
+                for label in self._labels.get(layer_name, [])
+            ) and any(
+                label not in self._labels[layer_name]
+                for label in other._labels.get(layer_name, [])
+            ):
+                return layer_name
+        return None
 
     def iter_paths(self, layer_names: List[str]) -> List[List[str]]:
         """Returns over all paths defined by the current SMILES labels."""

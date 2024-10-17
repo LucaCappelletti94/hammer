@@ -79,7 +79,7 @@ CN1c2ccccc2C(=O)N2CCc3c([nH]c4ccccc34)[C@H]21,['Alkaloids'],['Tryptophan alkaloi
 COc1cc(C2C(C)C3C(=O)Oc4cc5occc5c(OC)c4C32)cc2c1OCO2,['Shikimates and Phenylpropanoids'],['Coumarins'],['Furocoumarins'],[],['Lignans'],['Shikimates and Phenylpropanoids'],False,?
 CN[C@@H]1[C@H](O[C@H]2[C@H](O[C@@H]3[C@@H](NC(=N)N)[C@H](O)[C@@H](NC(=N)N)[C@H](O)[C@H]3O)O[C@@H](C)[C@]2(O)C=O)O[C@@H](CO)[C@H](O)[C@H]1OP(=O)(O)OC[C@H]1O[C@@H](n2cnc3c(N)ncnc32)[C@H](O)[C@@H]1O,['Carbohydrates'],['Nucleotides'],['Purine nucleotides'],"['Amino cyclitols', 'Aminoglycosides']","['Aminosugars and aminoglycosides', 'Polyols']",['Carbohydrates'],True,?
 O=C(O)CCCCCCC/C=C\CCCCCCCCO,['Fatty acids'],['Octadecanoids'],['Other Octadecanoids'],['Hydroxy fatty acids'],['Fatty Acids and Conjugates'],['Fatty acids'],False,?
-CC(CCC(O)C(C)(C)O)C(O)CO,['Terpenoids'],['Monoterpenoids'],['Acyclic monoterpenoids'],['Fatty alcohols'],['Fatty acyls'],"['Fatty acids', 'Terpenoids']",False,?
+CC(CCC(O)C(C)(C)O)C(O)CO,['Terpenoids'],['Monoterpenoids'],['Acyclic monoterpenoids'],['Fatty alcohols'],['Fatty acyls'],"['Fatty acids', 'Terpenoids']",False,scraped
 CCCC(=O)C1C(=O)C(CC2C(=O)C(C(=O)CC)C(=O)C(C)(C)C2=O)C(=O)C(C)(C)C1=O,['Polyketides'],['Phloroglucinols'],['Dimeric phloroglucinols'],['Simple cyclic polyketides'],['Cyclic polyketides'],['Polyketides'],False,?
 OC1CC2CCN3Cc4cc5c(cc4C(C1O)C23)OCO5,['Alkaloids'],['Lysine alkaloids'],['Indolizidine alkaloids'],['Amarylidaceae alkaloids'],['Tyrosine alkaloids'],['Alkaloids'],False,?
 CC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCO,['Terpenoids'],['Sesterterpenoids'],['Linear sesterterpenoids'],['Acyclic triterpenoids'],['Triterpenoids'],['Terpenoids'],False,?
@@ -304,7 +304,7 @@ CC(C)CCCCCCCCCCCCC(O)CC(=O)O,['Fatty acids'],['Octadecanoids'],['Other Octadecan
 C=C(C)C1CCC(C)(/C=C/c2ccc3c(c2O)[C@](O)(c2ccc(OC)cc2)[C@@H](OC)C(=O)N3)O1,['Alkaloids'],['Anthranilic acid alkaloids'],['Quinoline alkaloids'],['Quinoline alkaloids'],['Tryptophan alkaloids'],['Alkaloids'],False,?
 CC(=O)C12OC1CC1C3CC=C4C5OC(C)(C)OC5CCC4(C)C3CCC12C,['Terpenoids'],['Diterpenoids'],['Kaurane and Phyllocladane diterpenoids'],['Pregnane steroids'],['Steroids'],['Terpenoids'],False,?
 CCCCCCCC/C=C/CCCCCC/C=C\CCCC(=O)O,['Fatty acids'],['Docosanoids'],['Other Docosanoids'],['Unsaturated fatty acids'],['Fatty Acids and Conjugates'],['Fatty acids'],False,?
-C=C1C2CC(CC2C2=CC3CCC2C3)C1(C)C,['Terpenoids'],['Monoterpenoids'],['Camphane monoterpenoids'],[],['Sesquiterpenoids'],['Terpenoids'],False,?
+C=C1C2CC(CC2C2=CC3CCC2C3)C1(C)C,['Terpenoids'],['Monoterpenoids'],['Camphane monoterpenoids'],[],['Sesquiterpenoids'],['Terpenoids'],False,original
 CC(=CC(=O)O)CCC=CC(C)CCC1CC=CC(=O)O1,['Polyketides'],['Linear polyketides'],['Open-chain polyketides'],['2-pyrone derivatives'],['Cyclic polyketides'],['Polyketides'],False,?
 O=C(O)CNCC(=O)C(O)C(O)C(O)CO,['Carbohydrates'],['Aminosugars and aminoglycosides'],['Aminosugars'],[],['Saccharides'],['Carbohydrates'],False,?
 CCCCCCCCCCCCCCCC(O)C(O)C(=O)O,['Fatty acids'],['Octadecanoids'],['Other Octadecanoids'],['Hydroxy fatty acids'],['Fatty Acids and Conjugates'],['Fatty acids'],False,?

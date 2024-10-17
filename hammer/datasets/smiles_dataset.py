@@ -140,13 +140,16 @@ class Dataset(Hashable):
 
         # We verify that all terms appear at least two times in the dataset,
         # or we cannot split the dataset into training and test sets in a stratified manner.
+        rare_terms: List[Tuple[str, str, int]] = []
         for layer_name, counter in counters.items():
             for node_name, count in counter.items():
                 if count < 2:
-                    raise ValueError(
-                        f"The label '{node_name}' in layer "
-                        f"'{layer_name}' appears only {count} times."
-                    )
+                    rare_terms.append((node_name, layer_name, count))
+
+        if rare_terms:
+            raise ValueError(
+                f"Terms appear less than two times in the dataset: {rare_terms}"
+            )
 
         leaf_layer: List[str] = self.layered_dag().get_layer(
             self.layered_dag().leaf_layer_name

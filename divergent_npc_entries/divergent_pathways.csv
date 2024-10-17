@@ -25,7 +25,7 @@ CC(/C=C/C1(O)C(C)CC(O)CC1(C)C)OC1OC(CO)C(O)C(O)C1O,['Fatty acids'],['Fatty acyl 
 C=CC1C(OC2OC(CO)C(O)C(O)C2O)OC=C2C(=O)OC(Cc3cccc(CCc4ccc(O)cc4)n3)CC21,['Alkaloids'],['Nicotinic acid alkaloids'],['Pyridine alkaloids'],['Secoiridoid monoterpenoids'],['Monoterpenoids'],['Terpenoids'],True,?
 COCc1cc(O)c2c(c1O)[C@@]1(C)CC[C@H]3C(C)(C)CCC[C@]3(C)[C@H]1C2,['Polyketides'],['Meroterpenoids'],['Tetraketide meroterpenoids'],['Tetraketide meroterpenoids'],['Meroterpenoids'],['Terpenoids'],False,?
 Cc1cc(O)c(CC2C(C)(O)CCC3C(C)(C)CCCC32C)c(O)c1,['Polyketides'],['Meroterpenoids'],['Tetraketide meroterpenoids'],['Tetraketide meroterpenoids'],['Meroterpenoids'],['Terpenoids'],False,?
-Cc1cc(O)c(C=Nc2ccc3ccccc3c2)c2c1C(=O)Oc1c(CO)c(O)c(C(=O)O)c(C=Nc3ccc4ccccc4c3)c1O2,['Polyketides'],['Aromatic polyketides'],['Depsides and depsidones'],['Phenanthrenes'],['Phenanthrenoids'],['Shikimates and Phenylpropanoids'],False,?
+Cc1cc(O)c(C=Nc2ccc3ccccc3c2)c2c1C(=O)Oc1c(CO)c(O)c(C(=O)O)c(C=Nc3ccc4ccccc4c3)c1O2,['Polyketides'],['Aromatic polyketides'],['Depsides and depsidones'],['Phenanthrenes'],['Phenanthrenoids'],['Shikimates and Phenylpropanoids'],False,original
 Cc1cccc2c3c(ccc12)C(C(=O)O)=C(C(C)C)C(=O)C3=O,['Terpenoids'],['Diterpenoids'],['Abietane diterpenoids'],['Naphthoquinones'],['Naphthalenes'],['Polyketides'],False,?
 CC[C@H](N)C(=O)O,['Fatty acids'],['Fatty Acids and Conjugates'],['Amino fatty acids'],['Aminoacids'],['Small peptides'],['Amino acids and Peptides'],False,?
 C=C1C(OC(C)=O)CC(OC(=O)c2cccnc2)C(C)(OC(C)=O)CC=CC(C)C(=O)C2(OC(C)=O)CC(C)(OC(=O)c3cccnc3)C(OC(C)=O)C2C1OC(C)=O,['Alkaloids'],['Nicotinic acid alkaloids'],['Pyridine alkaloids'],['Jatrophane diterpenoids'],['Diterpenoids'],['Terpenoids'],False,?
@@ -107,7 +107,7 @@ C=C(C)CCCC(C)CO,['Fatty acids'],['Fatty acyls'],['Fatty alcohols'],['Acyclic mon
 NCCCCCCCCNP(=O)(O)OP(=O)(O)OP(=O)(O)OCC1OC(n2cnc3c(=O)[nH]c(N)nc32)C(O)C1O,['Carbohydrates'],['Nucleosides'],['Purine nucleosides'],[],[],['Alkaloids'],False,?
 C=CC(C)=CCCC(C)CCO,['Terpenoids'],['Monoterpenoids'],['Acyclic monoterpenoids'],['Fatty alcohols'],['Fatty acyls'],['Fatty acids'],False,?
 O=C(O)c1ccccc1NO,['Amino acids and Peptides'],['Small peptides'],['Aminoacids'],[],['Anthranilic acid alkaloids'],['Alkaloids'],False,?
-C=Cc1c2c(cc(O)c1C(=O)O)-c1ccc(O)c(C)c1CC2,['Terpenoids'],['Diterpenoids'],['Cleistanthane diterpenoids'],['Phenanthrenes'],['Phenanthrenoids'],['Shikimates and Phenylpropanoids'],False,?
+C=Cc1c2c(cc(O)c1C(=O)O)-c1ccc(O)c(C)c1CC2,['Terpenoids'],['Diterpenoids'],['Cleistanthane diterpenoids'],['Phenanthrenes'],['Phenanthrenoids'],['Shikimates and Phenylpropanoids'],False,scraped
 C=CC(C)(O)CC/C=C(\C)CO,['Fatty acids'],['Fatty acyls'],['Fatty alcohols'],['Acyclic monoterpenoids'],['Monoterpenoids'],['Terpenoids'],False,?
 O=C(O)C1CCCNC1,['Amino acids and Peptides'],['Small peptides'],['Aminoacids'],[],['Lysine alkaloids'],['Alkaloids'],False,?
 O=C(C=Cc1ccc(N2CCCSCCCSCCCSCCC2)cc1)c1ccc(F)c(F)c1,['Shikimates and Phenylpropanoids'],['Flavonoids'],['Chalcones'],[],[],['Alkaloids'],False,?
@@ -281,7 +281,7 @@ C=CC1C2C=C(C)CC1(N)c1ccc(=O)[nH]c1C2,['Alkaloids'],['Pseudoalkaloids'],['Terpeno
 CCCCCC=CCCCCCCCCC(=O)C1=C(O)CCCC1=O,['Terpenoids'],['Meroterpenoids'],['Polyprenylated cyclic polyketides (Hop meroterpenoids)'],['Polyprenylated cyclic polyketides (Hop meroterpenoids)'],['Meroterpenoids'],['Polyketides'],False,?
 COc1cc2c(c(O)c1O)C(=O)C(=O)C=C2,['Shikimates and Phenylpropanoids'],['Coumarins'],['Simple coumarins'],['Naphthoquinones'],['Naphthalenes'],['Polyketides'],False,?
 CCCCC(=O)OCCC(C)CCC=C(C)C,['Fatty acids'],['Fatty esters'],['Wax monoesters'],['Acyclic monoterpenoids'],['Monoterpenoids'],['Terpenoids'],False,?
-CC1CC12c1ccc3c(ccc4ccc(O)cc43)c1CC2O,['Terpenoids'],['Steroids'],['Estrane steroids'],['Phenanthrenes'],['Phenanthrenoids'],['Shikimates and Phenylpropanoids'],False,?
+CC1CC12c1ccc3c(ccc4ccc(O)cc43)c1CC2O,['Terpenoids'],['Steroids'],['Estrane steroids'],['Phenanthrenes'],['Phenanthrenoids'],['Shikimates and Phenylpropanoids'],False,scraped
 C=CC(C)(O)CCC=C(C)C(=O)OCC1OC(OC(C)C=CC2(O)C(C)=CC(=O)CC2(C)C)C(O)C(O)C1O,['Alkaloids'],['Tryptophan alkaloids'],['Simple oxindole alkaloids'],[],[],['Terpenoids'],True,?
 CCCCCC/C=C\CC(C)CC(=O)O,['Polyketides'],['Linear polyketides'],['Open-chain polyketides'],['Branched fatty acids'],['Fatty Acids and Conjugates'],['Fatty acids'],False,?
 COC1=C(O)C(=O)C(C=Cc2ccccc2)=C(O)C1=O,['Polyketides'],['Cyclic polyketides'],['Simple cyclic polyketides'],['Monomeric stilbenes'],['Stilbenoids'],['Shikimates and Phenylpropanoids'],False,?

@@ -36,7 +36,7 @@ from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
 import compress_pickle
-from sklearn.preprocessing import RobustScalerA
+from sklearn.preprocessing import RobustScaler
 from extra_keras_metrics import get_minimal_multiclass_metrics
 from hammer.feature_settings import FeatureSettings
 from hammer.augmentation_settings import AugmentationSettings

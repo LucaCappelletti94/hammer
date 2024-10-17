@@ -107,7 +107,7 @@ Executing this command will generate the barplots [you can find in this director
 | Topological Torsion (1024b)                   | 0.931260     | 0.002015    | 0.863581     | 0.002356    |
 | Van Der Waals Surface Area                    | 0.817110     | 0.063946    | 0.795765     | 0.006069    |
 
-[![AUPRC barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_evaluation_barplots/class_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots)
+[![AUPRC barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_evaluation_barplots/classes_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots)
 
 It is also possible to run the `feature-sets-evaluation` on a subset of features:
 

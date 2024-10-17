@@ -27,6 +27,10 @@ class LabeledSMILES(Hashable):
         assert all(
             all(isinstance(s, str) for s in v) for v in labels.values()
         ), "Values of labels must be lists of strings."
+        assert all(
+            len(set(v)) == len(v) for v in labels.values()
+        ), "Values of labels must be lists of unique strings."
+
         self._smiles: str = smiles
         self._labels: Dict[str, List[str]] = labels
 
@@ -86,22 +90,29 @@ class LabeledSMILES(Hashable):
                 return layer_name
         return None
 
-    def iter_paths(self, layer_names: List[str]) -> List[List[str]]:
+    def iter_paths(self, layered_dag: LayeredDAG) -> List[List[str]]:
         """Returns over all paths defined by the current SMILES labels."""
         # All paths start from the last layer, i.e. the leaf, and
         # end at the roots. Since these paths represent a DAG, it
         # is expected that the paths are acyclic, and that there
         # will be multiple paths to the root.
-        paths = []
+        layer_names = layered_dag.get_layer_names()
+        last_layer_name: Optional[str] = None
+        paths = [[] for _ in self._labels[layer_names[-1]]]
         for layer_name in reversed(layer_names):
-            if len(paths) == 0:
-                paths = [[node] for node in self._labels[layer_name]]
-                continue
             new_paths = []
             for node in self._labels[layer_name]:
                 for path in paths:
-                    new_paths.append(path + [node])
+                    copied_path = path.copy()
+                    if last_layer_name is None or layered_dag.has_edge(
+                        src_node_name=path[-1],
+                        dst_node_name=node,
+                        layer_name=last_layer_name,
+                    ):
+                        copied_path.append(node)
+                        new_paths.append(copied_path)
             paths = new_paths
+            last_layer_name = layer_name
         return paths
 
     def numpy_labels(self, layered_dag: Type[LayeredDAG]) -> Dict[str, np.ndarray]:
@@ -119,7 +130,7 @@ class LabeledSMILES(Hashable):
                     if not any(
                         layered_dag.has_edge(
                             src_node_name=src,
-                            dest_node_name=node,
+                            dst_node_name=node,
                             layer_name=previous_layer_name,
                         )
                         for src in self._labels[previous_layer_name]
@@ -131,13 +142,14 @@ class LabeledSMILES(Hashable):
 
         return labels
 
+    def to_dict(self) -> Dict:
+        """Return the labeled SMILES as a dictionary."""
+        return {"smiles": self._smiles, **self._labels}
+
     def consistent_hash(self, use_approximation: bool = False) -> str:
         """Return a hash that is consistent across different Python versions."""
         return sha256(
-            {
-                "smiles": self._smiles,
-                "labels": self._labels,
-            },
+            self.to_dict(),
             use_approximation=use_approximation,
         )
 

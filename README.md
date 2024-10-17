@@ -50,17 +50,21 @@ You can compute a summary of the coverage of the DAG using the following command
 
 ```bash
 hammer dag-coverage --dataset NPC --verbose
-hammer dag-coverage --dataset NPCScraped --verbose
+hammer dag-coverage --dataset NPCHarmonized --verbose
 ```
 
 At the time of writing, the coverage of the DAG is as follows:
 
-| Dataset   | Layer        |   Coverage |
-|:----------|:-------------|-----------:|
-| NPC       | pathways     |   1        |
-| NPC       | superclasses |   0.922078 |
-| NPC       | classes      |   0.938129 |
-| NPC       | DAG          |   0.819761 |
+| Dataset       | Layer        |   Coverage |
+|:--------------|:-------------|-----------:|
+| NPC           | pathways     |   1        |
+| NPC           | superclasses |   0.922078 |
+| NPC           | classes      |   0.936782 |
+| NPC           | DAG          |   0.730228 |
+| NPCHarmonized | pathways     |   1        |
+| NPCHarmonized | superclasses |   0.948052 |
+| NPCHarmonized | classes      |   0.95546  |
+| NPCHarmonized | DAG          |   0.813651 |
 
 ### Feature sets evaluation
 

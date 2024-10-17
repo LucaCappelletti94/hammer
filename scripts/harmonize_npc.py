@@ -22,6 +22,7 @@ no empty set of clases, superclasses or subclasses), we consider the scraped pre
 
 from typing import Optional, Dict, Set
 import pandas as pd
+import compress_json
 from hammer.datasets.labeled_smiles import LabeledSMILES
 from hammer.datasets import NPCDataset, NPCScrapedDataset
 
@@ -205,6 +206,11 @@ def harmonize_npc():
 
     for technique, count in harmonization_tecniques_counts.items():
         print(f"{BLUE}└── {technique}:{RESET} {count}")
+
+    compress_json.dump(
+        [harmonized_entry.to_dict() for harmonized_entry in harmonized.values()],
+        "../hammer/datasets/npc/npc-harmonized.json.xz",
+    )
 
 
 if __name__ == "__main__":

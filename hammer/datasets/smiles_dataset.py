@@ -95,7 +95,7 @@ class Dataset(Hashable):
             for labeled_smiles in self.iter_labeled_smiles_with_minimum_count(
                 minimum_count
             )
-            for path in labeled_smiles.iter_paths(self.layered_dag().get_layer_names())
+            for path in labeled_smiles.iter_paths(self.layered_dag())
         }
 
         return len(paths_in_dataset) / self.layered_dag().number_of_paths

@@ -1,7 +1,7 @@
 smiles,pathways,superclasses,classes,class_results,superclass_results,pathway_results,isglycoside,correct_option
 CC=C1NC(=O)C(NC(=O)C(NC(=O)C(COS(=O)(=O)[O-])OC)C(C)C)C(C)OC(=O)C(C(C)C)NC(=O)C(Cc2ccc(O)cc2)N(C)C(=O)C(Cc2ccccc2)N2C(=O)C(CCC2O)NC1=O,['Amino acids and Peptides'],['Oligopeptides'],['Cyanopeptolins'],"['Ahp-containing cyclodepsipeptides', 'Cyclic peptides', 'Depsipeptides']",['Oligopeptides'],"['Amino acids and Peptides', 'Polyketides']",False,scraped
 O=C(O)CCCCC1C=CCC1,['Fatty acids'],['Fatty Acids and Conjugates'],['Unsaturated fatty acids'],['Carbocyclic fatty acids'],['Fatty Acids and Conjugates'],['Fatty acids'],False,?
-Cc1cc(OC(=O)c2c(C)cc(OC(=O)c3c(C)cc(O)cc3O)cc2O)cc(O)c1C(=O)O,['Polyketides'],['Aromatic polyketides'],['Depsides and depsidones'],['Depsides'],['Aromatic polyketides'],['Polyketides'],False,?
+Cc1cc(OC(=O)c2c(C)cc(OC(=O)c3c(C)cc(O)cc3O)cc2O)cc(O)c1C(=O)O,['Polyketides'],['Aromatic polyketides'],['Depsides and depsidones'],['Depsides'],['Aromatic polyketides'],['Polyketides'],False,original
 O=C(O)C(Cl)Cl,['Fatty acids'],['Fatty Acids and Conjugates'],['Halogenated fatty acids'],['Dicarboxylic acids'],['Fatty Acids and Conjugates'],['Fatty acids'],False,?
 COc1cc(C)c(C(=O)Oc2cc(C)c(C(=O)O)c(O)c2C)c(O)c1C,['Polyketides'],['Aromatic polyketides'],['Depsides and depsidones'],['Depsides'],['Aromatic polyketides'],['Polyketides'],False,?
 CCC(C)C1NC(=O)C(Cc2ccc(O)cc2)N(C)C(=O)C(CC(C)C)N2C(=O)C(CCC2O)NC(=O)C(Cc2ccc(O)cc2)NC(=O)C(NC(=O)C(CCC(N)=O)NC(=O)C(O)Cc2ccc(O)cc2)C(C)OC1=O,['Amino acids and Peptides'],['Oligopeptides'],['Cyanopeptolins'],"['Ahp-containing cyclodepsipeptides', 'Cyclic peptides', 'Depsipeptides']",['Oligopeptides'],"['Amino acids and Peptides', 'Polyketides']",False,?

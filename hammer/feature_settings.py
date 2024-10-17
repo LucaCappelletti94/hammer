@@ -5,9 +5,9 @@ from copy import deepcopy
 import compress_json
 from dict_hash import Hashable, sha256
 from hammer.features import (
+    ExtendedConnectivityFingerprint,
     FeatureInterface,
     AutocorrelationFingerprint,
-    ExtendedConnectivityFingerprint,
     FunctionalGroupsFingerprint,
     GhoseCrippenFingerprint,
     LaggnerFingerprint,
@@ -29,9 +29,9 @@ from hammer.features import (
 )
 
 FEATURES: List[Type[FeatureInterface]] = [
+    ExtendedConnectivityFingerprint,
     AutocorrelationFingerprint,
     AtomPairFingerprint,
-    ExtendedConnectivityFingerprint,
     FunctionalGroupsFingerprint,
     GhoseCrippenFingerprint,
     LaggnerFingerprint,

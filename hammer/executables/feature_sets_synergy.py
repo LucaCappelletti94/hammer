@@ -60,9 +60,7 @@ def feature_sets_synergy(args: Namespace):
     performance: List[pd.DataFrame] = []
 
     feature_settings: FeatureSettings = FeatureSettings()
-    low_cardinality_features: FeatureSettings = (
-        FeatureSettings().include_all_low_cardinality()
-    )
+    low_cardinality_features: FeatureSettings = FeatureSettings().include_all()
 
     for feature_class in FEATURES:
         if feature_class.pythonic_name() in args.base_feature_sets:
@@ -98,5 +96,7 @@ def feature_sets_synergy(args: Namespace):
         feature_performance["feature_set"] = feature_class().name()
 
         performance.append(feature_performance)
+
+        save_performance(performance, args)
 
     save_performance(performance, args)

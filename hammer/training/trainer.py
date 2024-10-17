@@ -55,6 +55,20 @@ class Trainer(Hashable):
         validation_size: float,
     ) -> pd.DataFrame:
         """Train the classifier."""
+        try:
+            import tensorflow as tf # pylint: disable=import-outside-toplevel
+            gpus = tf.config.experimental.list_physical_devices("GPU")
+            if gpus:
+                # Restrict TensorFlow to only use the first GPU
+                try:
+                    for gpu in gpus:
+                        tf.config.experimental.set_memory_growth(gpu, True)
+                except RuntimeError as e:
+                    # Visible devices must be set before GPUs have been initialized
+                    print(e)
+        except ImportError:
+            pass
+
         (_train_smiles, _train_labels), (test_smiles, test_labels) = (
             self._smiles_dataset.primary_split(
                 test_size=test_size,

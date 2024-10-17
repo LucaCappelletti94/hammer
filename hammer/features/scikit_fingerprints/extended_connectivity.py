@@ -15,7 +15,7 @@ class ExtendedConnectivityFingerprint(BinaryFeatureInterface):
     def __init__(
         self,
         fp_size: int = 2048,
-        radius: int = 1,
+        radius: int = 2,
         verbose: bool = True,
         n_jobs: Optional[int] = None,
     ) -> None:

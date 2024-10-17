@@ -4,10 +4,12 @@ from typing import Tuple
 from keras import ops
 from keras import KerasTensor
 from keras.api.layers import Layer
+from keras.api.utils import register_keras_serializable
 import numpy as np
 
 
 # pylint: disable=too-many-ancestors
+@register_keras_serializable(package="hammer")
 class Harmonize(Layer):
     """Harmonization layer for neural networks.
 
@@ -96,7 +98,7 @@ class Harmonize(Layer):
         # interval [0, 1].
 
         # Compute the output tensor
-        output: KerasTensor = harmonization_weights * children
+        output: KerasTensor = harmonization_weights + children
 
         if output.shape != children.shape:
             raise ValueError(

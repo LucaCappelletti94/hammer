@@ -72,7 +72,7 @@ The model used for these evaluations is the same Hammer model that is used for t
 ```bash
 hammer feature-sets-evaluation \
     --verbose \
-    --holdouts 5 \
+    --holdouts 10 \
     --dataset NPC \
     --test-size 0.2 \
     --validation-size 0.2 \
@@ -83,28 +83,29 @@ hammer feature-sets-evaluation \
 
 Executing this command will generate the barplots [you can find in this directory](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots). In the following barplot, you will find the AUPRC for each class, for validation, test a, for each feature set, averaged over all holdouts:
 
-| **Feature Set**                               | **Mean**   | **Std**    |
-|-----------------------------------------------|------------|------------|
-| Atom Pair (2048b)                             | 0.857813   | 0.002735   |
-| Auto-Correlation                              | 0.811050   | 0.004208   |
-| Avalon (2048b)                                | 0.900124   | 0.003449   |
-| Extended Connectivity (1r, 2048b)             | 0.884863   | 0.003651   |
-| Functional Groups                             | 0.589513   | 0.015186   |
-| Ghose-Crippen                                 | 0.659410   | 0.001983   |
-| Laggner                                       | 0.759160   | 0.012833   |
-| Layered (2048b)                               | 0.898108   | 0.003496   |
-| Lingo (1024b)                                 | 0.837630   | 0.002075   |
-| MACCS                                         | 0.810575   | 0.005415   |
-| MAP4                                          | 0.855033   | 0.005111   |
-| MinHashed (2r, 2048b)                         | 0.839570   | 0.009128   |
-| MinHashed Atom Pair (2r, 2048b)               | 0.301133   | 0.009825   |
-| Molecular Quantum Numbers                     | 0.672846   | 0.008695   |
-| Pattern (2048b)                               | 0.893990   | 0.005862   |
-| PubChem                                       | 0.885968   | 0.003264   |
-| RDKit (2048b)                                 | 0.871136   | 0.008087   |
-| SMILES Extended Connectivity (1r, 2048b)      | 0.827976   | 0.004601   |
-| Topological Torsion (1024b)                   | 0.863581   | 0.002356   |
-| Van Der Waals Surface Area                    | 0.795765   | 0.006069   |
+| **Feature Set**                               | **New Mean** | **New Std** | **Old Mean** | **Old Std**  |
+|-----------------------------------------------|--------------|-------------|--------------|-------------|
+| Atom Pair (2048b)                             | 0.927321     | 0.009292    | 0.857813     | 0.002735    |
+| Auto-Correlation                              | 0.869845     | 0.021085    | 0.811050     | 0.004208    |
+| Avalon (2048b)                                | 0.919810     | 0.044258    | 0.900124     | 0.003449    |
+| Extended Connectivity (2r, 2048b)             | 0.935591     | 0.002339    | -            | -           |
+| Extended Connectivity (1r, 2048b)             | -            | -           | 0.884863     | 0.003651    |
+| Functional Groups                             | 0.572862     | 0.019137    | 0.589513     | 0.015186    |
+| Ghose-Crippen                                 | 0.629073     | 0.021072    | 0.659410     | 0.001983    |
+| Laggner                                       | 0.805593     | 0.014127    | 0.759160     | 0.012833    |
+| Layered (2048b)                               | 0.929109     | 0.013407    | 0.898108     | 0.003496    |
+| Lingo (1024b)                                 | 0.915304     | 0.002246    | 0.837630     | 0.002075    |
+| MACCS                                         | 0.848236     | 0.015830    | 0.810575     | 0.005415    |
+| MAP4                                          | 0.934615     | 0.002147    | 0.855033     | 0.005111    |
+| MinHashed (2r, 2048b)                         | 0.928356     | 0.002958    | 0.839570     | 0.009128    |
+| MinHashed Atom Pair (2r, 2048b)               | 0.306410     | 0.038803    | 0.301133     | 0.009825    |
+| Molecular Quantum Numbers                     | 0.614444     | 0.029922    | 0.672846     | 0.008695    |
+| Pattern (2048b)                               | 0.892704     | 0.043349    | 0.893990     | 0.005862    |
+| PubChem                                       | 0.911609     | 0.025582    | 0.885968     | 0.003264    |
+| RDKit (2048b)                                 | 0.927816     | 0.003440    | 0.871136     | 0.008087    |
+| SMILES Extended Connectivity (1r, 2048b)      | 0.870877     | 0.007103    | 0.827976     | 0.004601    |
+| Topological Torsion (1024b)                   | 0.931260     | 0.002015    | 0.863581     | 0.002356    |
+| Van Der Waals Surface Area                    | 0.817110     | 0.063946    | 0.795765     | 0.006069    |
 
 [![AUPRC barplot](https://github.com/LucaCappelletti94/hammer/blob/main/feature_sets_evaluation_barplots/class_auprc_feature_sets.png?raw=true)](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots)
 

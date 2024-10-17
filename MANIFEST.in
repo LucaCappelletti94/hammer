@@ -1,6 +1,6 @@
 include LICENSE
-include hammer/training/models.json
-include hammer/training/datasets/npc/categorical.csv.gz
-include hammer/training/datasets/npc/*.json
-include hammer/training/layered_dags/npc/*.json
-include hammer/training/augmentation_strategies/pickaxe_normalized.json.xz
+include hammer/models.json
+include hammer/datasets/npc/categorical.csv.gz
+include hammer/datasets/npc/*.json
+include hammer/layered_dags/npc/*.json
+include hammer/augmentation_strategies/pickaxe_normalized.json.xz

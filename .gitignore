@@ -181,3 +181,6 @@ histories
 feature_selection_training
 feature_sets_synergy_training
 tertiary_feature_sets_synergy_training
+lotus.csv
+lotus.csv.gz
+*.ipynb

@@ -3,17 +3,19 @@
 from typing import Dict, Optional, Any, List, Type
 import os
 import shutil
+from copy import deepcopy
 from keras import Model
 from keras.api.layers import (
     Concatenate,
     Input,
     Dense,
-    BatchNormalization,
     Dropout,
+    Activation,
+    BatchNormalization,
 )
+from keras.api.losses import BinaryFocalCrossentropy
 from keras.api.utils import plot_model
 from keras.api.callbacks import (
-    ModelCheckpoint,
     TerminateOnNaN,
     ReduceLROnPlateau,
     EarlyStopping,
@@ -22,19 +24,17 @@ from keras.api.callbacks import (
 from keras.api.optimizers import (
     Adam,
 )
-from keras.api.initializers import (
-    HeNormal,
-)
+from keras.api.initializers import GlorotNormal
 from keras.api.saving import (
     load_model,
 )
 from keras.api import KerasTensor
-
 import compress_json
 from downloaders import BaseDownloader
 from tqdm.keras import TqdmCallback
 from tqdm.auto import tqdm
 import numpy as np
+import pandas as pd
 import compress_pickle
 from sklearn.preprocessing import RobustScaler
 from extra_keras_metrics import get_minimal_multiclass_metrics
@@ -43,6 +43,7 @@ from hammer.augmentation_settings import AugmentationSettings
 from hammer.utils import into_canonical_smiles, smiles_to_molecules
 from hammer.layered_dags import LayeredDAG
 from hammer.layers import Harmonize
+from hammer.initializers import LogitBiasInitializer
 
 
 class Hammer:
@@ -141,20 +142,22 @@ class Hammer:
 
         if input_layer.shape[1] > 768:
             hidden_sizes = 768
+        elif input_layer.shape[1] > 512:
+            hidden_sizes = 512
+        elif input_layer.shape[1] > 256:
+            hidden_sizes = 256
         else:
             hidden_sizes = 128
 
-        for i in range(4):
+        for i in range(3):
             hidden = Dense(
                 hidden_sizes,
                 activation="relu",
-                kernel_initializer=HeNormal(),
+                kernel_initializer=GlorotNormal(),
                 name=f"dense_{input_layer.name}_{i}",
             )(hidden)
-            hidden = BatchNormalization(
-                name=f"layer_normalization_{input_layer.name}_{i}"
-            )(hidden)
-        hidden = Dropout(0.3)(hidden)
+            hidden = BatchNormalization()(hidden)
+            hidden = Dropout(0.2)(hidden)
 
         return hidden
 
@@ -164,48 +167,51 @@ class Hammer:
             hidden = Concatenate(axis=-1)(inputs)
         else:
             hidden = inputs[0]
-        for i in range(4):
+        for i in range(2):
             hidden = Dense(
                 2048,
                 activation="relu",
-                kernel_initializer=HeNormal(),
+                kernel_initializer=GlorotNormal(),
                 name=f"dense_hidden_{i}",
             )(hidden)
-            hidden = BatchNormalization(
-                name=f"layer_normalization_hidden_{i}",
-            )(hidden)
-        hidden = Dropout(0.3)(hidden)
+            hidden = BatchNormalization()(hidden)
+            hidden = Dropout(0.3)(hidden)
         return hidden
 
-    def _build_heads(self, hidden_output: KerasTensor) -> Dict[str, KerasTensor]:
+    def _build_heads(
+        self, hidden_output: KerasTensor, labels: Dict[str, KerasTensor]
+    ) -> Dict[str, KerasTensor]:
         """Build the output head sub-module."""
         outputs: Dict[str, KerasTensor] = {}
-        previous_output: Optional[KerasTensor] = None
+        previous_raw_output: Optional[KerasTensor] = None
         adjacencies: Dict[str, np.ndarray] = self._dag.layer_adjacency_matrices()
         for layer_name in self._dag.get_layer_names():
-            if previous_output is None:
-                previous_output = Dense(
+            if previous_raw_output is None:
+                previous_raw_output = Dense(
                     self._dag.get_layer_size(layer_name),
-                    name=layer_name,
-                    activation="sigmoid",
+                    kernel_initializer=GlorotNormal(),
+                    bias_initializer=LogitBiasInitializer.from_labels(labels[layer_name]),
                 )(hidden_output)
 
-                assert previous_output.shape[1] == self._dag.get_layer_size(
+                assert previous_raw_output.shape[1] == self._dag.get_layer_size(
                     layer_name
                 ), (
                     f"Expected the output shape to be {self._dag.get_layer_size(layer_name)}, "
-                    f"but got {previous_output.shape[1]}. Layer name: {layer_name}."
+                    f"but got {previous_raw_output.shape[1]}. Layer name: {layer_name}."
                 )
 
-                outputs[layer_name] = previous_output
+                outputs[layer_name] = Activation("sigmoid", name=layer_name)(
+                    previous_raw_output
+                )
                 continue
 
             expected_layer_size: int = self._dag.get_layer_size(layer_name)
 
             unharmonized_output = Dense(
                 expected_layer_size,
+                kernel_initializer=GlorotNormal(),
                 name=f"{layer_name}_unharmonized",
-                activation="sigmoid",
+                bias_initializer=LogitBiasInitializer.from_labels(labels[layer_name]),
             )(hidden_output)
 
             assert unharmonized_output.shape[1] == expected_layer_size, (
@@ -213,25 +219,18 @@ class Hammer:
                 f"but got {unharmonized_output.shape[1]}. Layer name: {layer_name}."
             )
 
-            harmonized = Harmonize(
+            previous_raw_output = Harmonize(
                 adjacency_matrix=adjacencies[layer_name],
-                name=layer_name,
-            )(previous_output, unharmonized_output)
+                name=f"{layer_name}_harmonization",
+            )(previous_raw_output, unharmonized_output)
 
-            assert harmonized.shape[1] == expected_layer_size, (
-                f"Expected the output shape to be {expected_layer_size}, "
-                f"but got {harmonized.shape[1]}. Layer name: {layer_name}. "
-                f"Full harmonized output shape: {harmonized.shape}. "
-                f"Previous output shape: {previous_output.shape}. "
-                f"Adjacency matrix shape: {adjacencies[layer_name].shape}."
+            outputs[layer_name] = Activation("sigmoid", name=layer_name)(
+                previous_raw_output
             )
-
-            previous_output = harmonized
-            outputs[layer_name] = harmonized
 
         return outputs
 
-    def _build(self):
+    def _build(self, labels: Dict[str, np.ndarray]) -> None:
         """Build the classifier model."""
         input_layers: Dict[str, Input] = {
             feature_class.pythonic_name(): Input(
@@ -254,7 +253,7 @@ class Hammer:
 
         hidden: KerasTensor = self._build_hidden_layers(input_modalities)
 
-        heads: Dict[str, KerasTensor] = self._build_heads(hidden)
+        heads: Dict[str, KerasTensor] = self._build_heads(hidden, labels)
 
         self._model = Model(
             inputs=input_layers,
@@ -276,6 +275,7 @@ class Hammer:
             for feature_class in tqdm(
                 self._feature_settings.iter_features(),
                 desc="Computing features",
+                total=self._feature_settings.number_of_features(),
                 disable=not self._verbose,
                 dynamic_ncols=True,
                 leave=False,
@@ -291,44 +291,47 @@ class Hammer:
         augmentation_settings: Optional[AugmentationSettings] = None,
         model_checkpoint_path: str = "checkpoints/model_checkpoint.keras",
         maximal_number_of_epochs: int = 10_000,
-        batch_size: int = 2048,
+        batch_size: int = 4096,
     ) -> History:
         """Train the classifier model."""
-        self._build()
+        self._build(train_labels)
+
+        largest_layer_size: int = max(
+            self._dag.get_layer_size(layer_name)
+            for layer_name in self._dag.get_layer_names()
+        )
+        loss_weights: Dict[str, float] = {
+            layer_name: self._dag.get_layer_size(layer_name) / largest_layer_size
+            for layer_name in self._dag.get_layer_names()
+        }
+
         self._model.compile(
             optimizer=Adam(),
-            loss="binary_crossentropy",
+            loss=BinaryFocalCrossentropy(
+                apply_class_balancing=True, label_smoothing=0.05, gamma=3.0, alpha=0.2
+            ),
             metrics={
                 layer_name: get_minimal_multiclass_metrics()
                 for layer_name in self._dag.get_layer_names()
             },
+            loss_weights=loss_weights,
         )
 
         os.makedirs(os.path.dirname(model_checkpoint_path), exist_ok=True)
-        model_checkpoint = ModelCheckpoint(
-            model_checkpoint_path,
-            monitor=f"val_{self._dag.leaf_layer_name}_AUPRC",
-            save_best_only=True,
-            save_weights_only=False,
-            mode="auto",
-            save_freq="epoch",
-            verbose=0,
-        )
-
         learning_rate_scheduler = ReduceLROnPlateau(
             monitor=f"val_{self._dag.leaf_layer_name}_AUPRC",
-            factor=0.8,
-            patience=20,
+            factor=0.5,
+            patience=10,
             verbose=0,
             mode="max",
             min_delta=1e-4,
-            cooldown=5,
+            cooldown=3,
             min_lr=1e-6,
         )
 
         early_stopping = EarlyStopping(
             monitor=f"val_{self._dag.leaf_layer_name}_AUPRC",
-            patience=100,
+            patience=50,
             verbose=0,
             mode="max",
             restore_best_weights=True,
@@ -395,7 +398,6 @@ class Hammer:
                     leave=False,
                     dynamic_ncols=True,
                 ),
-                model_checkpoint,
                 TerminateOnNaN(),
                 early_stopping,
                 learning_rate_scheduler,
@@ -447,6 +449,10 @@ class Hammer:
         if tarball:
             os.system(f"tar -czf {path}.tar.gz {path}")
             shutil.rmtree(path)
+
+    def copy(self) -> "Hammer":
+        """Return a copy of the classifier model."""
+        return deepcopy(self)
 
     def evaluate(
         self, smiles: List[str], labels: Dict[str, np.ndarray]

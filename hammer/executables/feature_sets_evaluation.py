@@ -53,4 +53,6 @@ def feature_sets_evaluation(args: Namespace):
 
         performance.append(feature_performance)
 
+        save_performance(performance, args)
+
     save_performance(performance, args)

@@ -1,4 +1,4 @@
-"""Setup for the Mjolnir package."""
+"""Setup for the Hammer package."""
 
 import os
 import re
@@ -65,9 +65,11 @@ setup(
         "plot-keras-history",
         "cache_decorator",
         "pydot",
+        "keras",
         "scikit-fingerprints",
         "extra-keras-metrics",
         "compress_pickle",
+        "typeguard"
     ],
     extras_require=extras,
     entry_points={

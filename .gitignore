@@ -184,3 +184,5 @@ tertiary_feature_sets_synergy_training
 lotus.csv
 lotus.csv.gz
 *.ipynb
+classyfire_cache
+feature_sets_synergy_with_extended_connectivity_training

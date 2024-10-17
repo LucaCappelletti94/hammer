@@ -2,5 +2,6 @@ include LICENSE
 include hammer/models.json
 include hammer/datasets/npc/categorical.csv.gz
 include hammer/datasets/npc/*.json
+include hammer/datasets/npc/*.json.gz
 include hammer/layered_dags/npc/*.json
 include hammer/augmentation_strategies/pickaxe_normalized.json.xz

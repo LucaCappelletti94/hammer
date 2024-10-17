@@ -2,8 +2,8 @@
 
 from typing import List, Type
 from hammer.datasets.smiles_dataset import Dataset
-from hammer.datasets.npc import NPCDataset
+from hammer.datasets.npc import NPCDataset, NPCSCrapedDataset
 
-AVAILABLE_DATASETS: List[Type[Dataset]] = [NPCDataset]
+AVAILABLE_DATASETS: List[Type[Dataset]] = [NPCDataset, NPCSCrapedDataset]
 
-__all__ = ["Dataset", "NPCDataset"]
+__all__ = ["Dataset", "NPCDataset", "NPCSCrapedDataset", "AVAILABLE_DATASETS"]

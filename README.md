@@ -50,6 +50,7 @@ You can compute a summary of the coverage of the DAG using the following command
 
 ```bash
 hammer dag-coverage --dataset NPC --verbose
+hammer dag-coverage --dataset NPCScraped --verbose
 ```
 
 At the time of writing, the coverage of the DAG is as follows:
@@ -137,12 +138,12 @@ hammer feature-sets-synergy \
     --verbose \
     --holdouts 10 \
     --dataset NPC \
-    --base-feature-sets "layered" \
+    --base-feature-sets "extended_connectivity" \
     --test-size 0.2 \
     --validation-size 0.2 \
-    --performance-path "feature_sets_synergy_with_layered_training.csv" \
-    --training-directory "feature_sets_synergy_with_layered_training" \
-    --barplot-directory "feature_sets_synergy_with_layered_barplots"
+    --performance-path "feature_sets_synergy_with_extended_connectivity_training.csv" \
+    --training-directory "feature_sets_synergy_with_extended_connectivity_training" \
+    --barplot-directory "feature_sets_synergy_with_extended_connectivity_barplots"
 ```
 
 For the NPC dataset, we have identified that the secondary feature most synergistic (has the best validation AUPRC) with the base feature sets and also the smallest feature size is the `Van Der Waals Surface Area`, as illustrated in the following barplot:

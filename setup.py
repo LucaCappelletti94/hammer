@@ -66,6 +66,7 @@ setup(
         "cache_decorator",
         "pydot",
         "keras",
+        "barplots>=1.2.0",
         "silence_tensorflow",
         "environments_utils>=1.0.14",
         "scikit-fingerprints",

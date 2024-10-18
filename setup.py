@@ -66,6 +66,7 @@ setup(
         "cache_decorator",
         "pydot",
         "keras",
+        "silence_tensorflow",
         "scikit-fingerprints",
         "extra-keras-metrics",
         "compress_pickle",

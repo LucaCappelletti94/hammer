@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from rdkit.Chem.rdchem import Mol
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import RobustScaler
-from MulticoreTSNE import MulticoreTSNE
+
 from matplotlib.colors import TABLEAU_COLORS
 from hammer.datasets import Dataset
 from hammer.layered_dags import LayeredDAG
@@ -55,6 +55,8 @@ def _visualize_feature(
 
     if np.isnan(x).any():
         return
+
+    from MulticoreTSNE import MulticoreTSNE # type: ignore
 
     pca = PCA(n_components=50)
     tsne = MulticoreTSNE(

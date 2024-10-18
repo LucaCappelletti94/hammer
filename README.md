@@ -251,8 +251,9 @@ You can also run predictions for SMILES from a CSV, TSV or SSV file:
 ```bash
 hammer predict \
     --input "divergent_npc_entries/divergent_pathways.csv" \
-    --version npc.harmonized.v1
-    --verbose
+    --version npc.harmonized.v1 \
+    --verbose \
+    --output-dir "divergent_npc_entries/npc.harmonized.v1/"
 ```
 
 ## Citation

@@ -3,7 +3,6 @@
 from typing import Sequence, Optional
 from multiprocessing import cpu_count
 from skfp.fingerprints.ecfp import ECFPFingerprint
-from skfp.utils import TQDMSettings
 from rdkit.Chem.rdchem import Mol
 import numpy as np
 from hammer.features.feature_interface import BinaryFeatureInterface
@@ -24,13 +23,13 @@ class ExtendedConnectivityFingerprint(BinaryFeatureInterface):
             n_jobs = cpu_count()
         self._fp_size = fp_size
         self._radius = radius
-        tqdm_settings = (
-            TQDMSettings().leave(False).desc(self.name()).dynamic_ncols(True)
-        )
-        if not verbose:
-            tqdm_settings = tqdm_settings.disable()
+        
         self._fingerprint = ECFPFingerprint(
-            fp_size=fp_size, radius=radius, n_jobs=n_jobs, verbose=tqdm_settings
+            fp_size=fp_size, radius=radius, n_jobs=n_jobs, verbose={
+                "leave": False,
+                "dynamic_ncols": True,
+                "disable": not verbose
+            }
         )
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:

@@ -3,7 +3,6 @@
 from typing import Sequence, Optional
 from multiprocessing import cpu_count
 from skfp.fingerprints.maccs import MACCSFingerprint as MACCSFingerprintSKFP
-from skfp.utils import TQDMSettings
 from rdkit.Chem.rdchem import Mol
 import numpy as np
 from hammer.features.feature_interface import BinaryFeatureInterface
@@ -16,12 +15,12 @@ class MACCSFingerprint(BinaryFeatureInterface):
         """Initialize the MACCS fingerprint feature."""
         if n_jobs is None or n_jobs < 1:
             n_jobs = cpu_count()
-        tqdm_settings = (
-            TQDMSettings().leave(False).desc(self.name()).dynamic_ncols(True)
-        )
-        if not verbose:
-            tqdm_settings = tqdm_settings.disable()
-        self._fingerprint = MACCSFingerprintSKFP(n_jobs=n_jobs, verbose=tqdm_settings)
+        
+        self._fingerprint = MACCSFingerprintSKFP(n_jobs=n_jobs, verbose={
+                "leave": False,
+                "dynamic_ncols": True,
+                "disable": not verbose
+            })
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:
         """Transform a molecule into a feature representation."""

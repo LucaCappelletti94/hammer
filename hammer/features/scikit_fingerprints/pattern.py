@@ -3,7 +3,6 @@
 from typing import Sequence, Optional
 from multiprocessing import cpu_count
 from skfp.fingerprints.pattern import PatternFingerprint as PatternFingerprintSKFP
-from skfp.utils import TQDMSettings
 from rdkit.Chem.rdchem import Mol
 import numpy as np
 from hammer.features.feature_interface import BinaryFeatureInterface
@@ -19,13 +18,13 @@ class PatternFingerprint(BinaryFeatureInterface):
         if n_jobs is None or n_jobs < 1:
             n_jobs = cpu_count()
         self._fp_size = fp_size
-        tqdm_settings = (
-            TQDMSettings().leave(False).desc(self.name()).dynamic_ncols(True)
-        )
-        if not verbose:
-            tqdm_settings = tqdm_settings.disable()
+        
         self._fingerprint = PatternFingerprintSKFP(
-            fp_size=fp_size, n_jobs=n_jobs, verbose=tqdm_settings
+            fp_size=fp_size, n_jobs=n_jobs, verbose={
+                "leave": False,
+                "dynamic_ncols": True,
+                "disable": not verbose
+            }
         )
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:

@@ -3,7 +3,6 @@
 from typing import Sequence, Optional
 from multiprocessing import cpu_count
 from skfp.fingerprints.vsa import VSAFingerprint
-from skfp.utils import TQDMSettings
 from rdkit.Chem.rdchem import Mol
 import numpy as np
 from hammer.features.feature_interface import FeatureInterface
@@ -16,13 +15,13 @@ class VanDerWaalsSurfaceAreaFingerprint(FeatureInterface):
         """Initialize the Van Der Waals Surface Area fingerprint feature."""
         if n_jobs is None or n_jobs < 1:
             n_jobs = cpu_count()
-        tqdm_settings = (
-            TQDMSettings().leave(False).desc(self.name()).dynamic_ncols(True)
-        )
-        if not verbose:
-            tqdm_settings = tqdm_settings.disable()
+        
         self._fingerprint = VSAFingerprint(
-            variant="all", n_jobs=n_jobs, verbose=tqdm_settings
+            variant="all", n_jobs=n_jobs, verbose={
+                "leave": False,
+                "dynamic_ncols": True,
+                "disable": not verbose
+            }
         )
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:

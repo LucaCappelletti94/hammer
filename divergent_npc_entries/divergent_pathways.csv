@@ -1,5 +1,5 @@
 smiles,pathways,superclasses,classes,class_results,superclass_results,pathway_results,isglycoside,correct_option
-CCCCC[C@@H]1CCCCCCCCCC(=O)O[C@H]2[C@H](O[C@@H]3[C@@H](O[C@@H]4O[C@@H](C)[C@H](O)[C@@H](O)[C@H]4O)[C@@H](O[C@H](C)[C@H]3O)O[C@@H]3[C@@H](O)[C@H](O)[C@@H](C)O[C@H]3O1)O[C@H](C)[C@@H](O)[C@@H]2O,['Carbohydrates'],['Saccharides'],['Polysaccharides'],['Resin glycosides'],['Fatty acyls'],['Fatty acids'],True,?
+CCCCC[C@@H]1CCCCCCCCCC(=O)O[C@H]2[C@H](O[C@@H]3[C@@H](O[C@@H]4O[C@@H](C)[C@H](O)[C@@H](O)[C@H]4O)[C@@H](O[C@H](C)[C@H]3O)O[C@@H]3[C@@H](O)[C@H](O)[C@@H](C)O[C@H]3O1)O[C@H](C)[C@@H](O)[C@@H]2O,['Carbohydrates'],['Saccharides'],['Polysaccharides'],['Resin glycosides'],['Fatty acyls'],['Fatty acids'],True,both
 Cc1ccc(Nc2ccc(Nc3ccc(C)cc3S(=O)(=O)[O-])c3c2C(=O)c2ccccc2C3=O)c(S(=O)(=O)[O-])c1,['Shikimates and Phenylpropanoids'],['Flavonoids'],['Anthocyanidins'],['Anthraquinones and anthrones'],['Polycyclic aromatic polyketides'],['Polyketides'],False,?
 CC(=O)[C@@H](O)[C@H](O)C[C@H](N)C(=O)O,['Fatty acids'],['Fatty Acids and Conjugates'],['Hydroxy fatty acids'],['Aminoacids'],['Small peptides'],['Amino acids and Peptides'],False,?
 COc1cc2c(c(O)c1CC=C(C)CCC=C(C)C)C(=O)N(CCc1ccccc1)C2,['Alkaloids'],['Pseudoalkaloids'],['Isoindole alkaloids'],['Tetraketide meroterpenoids'],['Meroterpenoids'],['Terpenoids'],False,?

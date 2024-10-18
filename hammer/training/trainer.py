@@ -48,6 +48,63 @@ class Trainer(Hashable):
             use_approximation=use_approximation,
         )
 
+    def train(
+        self,
+        test_size: float,
+    ) -> pd.DataFrame:
+        """Train the classifier."""
+        try:
+            import tensorflow as tf # pylint: disable=import-outside-toplevel
+            gpus = tf.config.experimental.list_physical_devices("GPU")
+            if gpus:
+                # Restrict TensorFlow to only use the first GPU
+                try:
+                    for gpu in gpus:
+                        tf.config.experimental.set_memory_growth(gpu, True)
+                except RuntimeError as e:
+                    # Visible devices must be set before GPUs have been initialized
+                    print(e)
+        except ImportError:
+            pass
+
+        (train_smiles, train_labels), (test_smiles, test_labels) = (
+            self._smiles_dataset.primary_split(
+                test_size=test_size,
+            )
+        )
+
+        classifier = Hammer(
+            dag=self._smiles_dataset.layered_dag(),
+            feature_settings=self._feature_settings,
+            verbose=self._verbose,
+            n_jobs=self._n_jobs,
+        )
+        classifier.fit(
+            train_smiles=train_smiles,
+            train_labels=train_labels,
+            validation_smiles=test_smiles,
+            validation_labels=test_labels,
+            augmentation_settings=self._augmentation_settings,
+            maximal_number_of_epochs=self._maximal_number_of_epochs,
+        )
+        classifier.save(self._training_directory)
+
+        performance = {
+            "train": classifier.evaluate(
+                train_smiles, train_labels
+            ),
+            "valid": classifier.evaluate(
+                test_smiles, test_labels
+            )
+        }
+
+        del classifier
+        clear_session()
+        gc.collect()
+
+        return performance
+
+   
     def holdouts(
         self,
         number_of_holdouts: int,

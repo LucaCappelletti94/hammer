@@ -1,8 +1,9 @@
 [
     {
-        "version": "v1",
-        "release-date": "2021-09-01",
-        "dataset": "NPC",
-        "description": "TODO"
+        "version": "npc.harmonized.v1",
+        "release-date": "2024-10-18",
+        "dataset": "NPCHarmonized",
+        "url": "https://zenodo.org/records/13949213/files/npc.harmonized.v1.tar.gz?download=1",
+        "description": "First version of the Hammer model for NPC harmonized dataset"
     }
 ]

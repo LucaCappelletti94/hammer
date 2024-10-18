@@ -56,7 +56,7 @@ class Hammer:
         scalers: Optional[Dict[str, RobustScaler]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         model_path: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         n_jobs: Optional[int] = None,
     ):
         """Initialize the classifier model.
@@ -96,8 +96,13 @@ class Hammer:
         self._n_jobs: Optional[int] = n_jobs
         self._metadata: Optional[Dict[str, Any]] = metadata
 
-    @staticmethod
-    def load_from_path(path: str) -> "Hammer":
+    @property
+    def layered_dag(self) -> Type[LayeredDAG]:
+        """Return the directed acyclic graph of the classifier model."""
+        return self._dag
+
+    @classmethod
+    def load_from_path(cls, path: str) -> "Hammer":
         """Load a classifier model from a file."""
 
         if path.endswith(".tar.gz"):
@@ -120,21 +125,28 @@ class Hammer:
 
         return classifier
 
-    @staticmethod
-    def load(model_name: str) -> "Hammer":
+    @classmethod
+    def load(cls, version: str) -> "Hammer":
         """Load a classifier model from a file."""
-        all_model_url: Dict[str, str] = compress_json.local_load("models.json")
-        if model_name not in all_model_url:
+        all_models: List[Dict[str, str]] = compress_json.local_load("models.json")
+        model_metadata: Optional[Dict[str, str]] = None
+        for model in all_models:
+            if model["version"] == version:
+                model_metadata = model
+                break
+
+        if model_metadata is None:
+            available_versions = [model["version"] for model in all_models]
             raise ValueError(
-                f"Model {model_name} not found. Available models: {all_model_url.keys()}"
+                f"Version {version} not found. Available versions: {available_versions}."
             )
 
         # We download the model weights and metadata from Zenodo.
         downloader = BaseDownloader()
-        path = f"downloads/{model_name}.tar.gz"
-        downloader.download(urls=all_model_url[model_name], paths=path)
+        path = f"downloads/{version}.tar.gz"
+        downloader.download(urls=model_metadata["url"], paths=path)
 
-        return Hammer.load_from_path(path)
+        return Hammer.load_from_path(os.path.join("downloads", version, version))
 
     def _build_input_modality(self, input_layer: Input) -> KerasTensor:
         """Build the input modality b-module."""
@@ -190,7 +202,9 @@ class Hammer:
                 previous_raw_output = Dense(
                     self._dag.get_layer_size(layer_name),
                     kernel_initializer=GlorotNormal(),
-                    bias_initializer=LogitBiasInitializer.from_labels(labels[layer_name]),
+                    bias_initializer=LogitBiasInitializer.from_labels(
+                        labels[layer_name]
+                    ),
                 )(hidden_output)
 
                 assert previous_raw_output.shape[1] == self._dag.get_layer_size(
@@ -477,14 +491,19 @@ class Hammer:
 
         return evaluations
 
-    def predict_proba(self, smiles: List[str]) -> Dict[str, np.ndarray]:
+    def predict_proba(
+        self, smiles: List[str], canonicalize: bool = True
+    ) -> Dict[str, pd.DataFrame]:
         """Predict the probabilities of the classes."""
         assert self._model is not None, "Model not trained yet."
 
-        smiles = into_canonical_smiles(
-            smiles, verbose=self._verbose, n_jobs=self._n_jobs
-        )
-        features = self._smiles_to_features(smiles)
+        if canonicalize:
+            canonical_smiles = into_canonical_smiles(
+                smiles, verbose=self._verbose, n_jobs=self._n_jobs
+            )
+            features = self._smiles_to_features(canonical_smiles)
+        else:
+            features = self._smiles_to_features(smiles)
 
         for feature_class in self._feature_settings.iter_features():
             if not feature_class.is_binary():
@@ -492,4 +511,14 @@ class Hammer:
                     feature_class.pythonic_name()
                 ].transform(features[feature_class.pythonic_name()])
 
-        return self._model.predict(features)
+        return {
+            layer_name: pd.DataFrame(
+                prediction,
+                columns=self._dag.get_layer(layer_name),
+                index=smiles,
+            )
+            for layer_name, prediction in self._model.predict(
+                features,
+                verbose=1 if self._verbose else 0,
+            ).items()
+        }

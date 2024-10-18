@@ -8,7 +8,7 @@ def add_features_arguments(parser: ArgumentParser) -> ArgumentParser:
     """Add arguments for feature settings to the parser."""
     for feature_class in FEATURES:
         parser.add_argument(
-            f"--include-{feature_class.pythonic_name()}",
+            f"--include-{feature_class.pythonic_name().replace("_", "-")}",
             action="store_true",
             default=False,
             help=feature_class.argparse_description(),

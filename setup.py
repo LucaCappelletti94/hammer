@@ -69,7 +69,8 @@ setup(
         "scikit-fingerprints",
         "extra-keras-metrics",
         "compress_pickle",
-        "typeguard"
+        "typeguard",
+        "anytree"
     ],
     extras_require=extras,
     entry_points={

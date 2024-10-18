@@ -22,6 +22,15 @@ class LayeredDAG(Hashable):
         """Return the name of the leaf layer."""
         return self.get_layer_names()[-1]
 
+    @property
+    def root_layer_name(self) -> str:
+        """Return the name of the root layer."""
+        return self.get_layer_names()[0]
+
+    def iter_root_nodes(self) -> List[str]:
+        """Return an iterator over the root nodes."""
+        return self.get_layer(self.root_layer_name)
+
     def has_node(self, node_name: str, layer_name: str) -> bool:
         """Return whether a node is in a layer."""
         return node_name in self.get_layer(layer_name)

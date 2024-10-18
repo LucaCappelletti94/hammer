@@ -15,7 +15,7 @@ from hammer.executables.argument_parser_utilities.shared_arguments import (
 )
 
 
-def add_model_selection_arguments(parser: ArgumentParser) -> ArgumentParser:
+def add_model_training_arguments(parser: ArgumentParser) -> ArgumentParser:
     """Add arguments for model selection to the parser."""
     parser.add_argument(
         "--test-size",
@@ -23,6 +23,28 @@ def add_model_selection_arguments(parser: ArgumentParser) -> ArgumentParser:
         default=0.2,
         help="Fraction of the dataset to include in the test split.",
     )
+
+    # Adds an argument for where to store the models being trained.
+    parser.add_argument(
+        "--training-directory",
+        type=str,
+        default="trained_models",
+        help="Path to store the trained models.",
+    )
+
+    parser = add_dataset_arguments(
+        add_features_arguments(
+            add_augmentation_settings_arguments(add_shared_arguments(parser))
+        )
+    )
+
+    return parser
+
+def add_model_selection_arguments(parser: ArgumentParser) -> ArgumentParser:
+    """Add arguments for model selection to the parser."""
+
+    parser = add_model_training_arguments(parser)
+
     parser.add_argument(
         "--validation-size",
         type=float,
@@ -36,14 +58,6 @@ def add_model_selection_arguments(parser: ArgumentParser) -> ArgumentParser:
         type=int,
         default=10,
         help="Number of holdouts to execute.",
-    )
-
-    # Adds an argument for where to store the models being trained.
-    parser.add_argument(
-        "--training-directory",
-        type=str,
-        default="trained_models",
-        help="Path to store the trained models.",
     )
 
     # Adds an argument for where to store the performance
@@ -60,12 +74,6 @@ def add_model_selection_arguments(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         default="feature_sets_evaluation_barplots",
         help="Path to store the barplots of the performance.",
-    )
-
-    parser = add_dataset_arguments(
-        add_features_arguments(
-            add_augmentation_settings_arguments(add_shared_arguments(parser))
-        )
     )
 
     return parser

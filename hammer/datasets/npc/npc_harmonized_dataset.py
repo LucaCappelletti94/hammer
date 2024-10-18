@@ -49,7 +49,7 @@ class NPCHarmonizedDataset(Dataset):
 
     def iter_labeled_smiles(self) -> Iterator[LabeledSMILES]:
         """Return an iterator over the labeled SMILES in the NPC dataset."""
-        for entry in compress_json.local_load("npc-harmonized.json.xz"):
+        for entry in compress_json.local_load("npc-harmonized.json"):
             yield LabeledSMILES(
                 entry["smiles"],
                 {

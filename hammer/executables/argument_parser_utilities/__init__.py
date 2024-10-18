@@ -17,6 +17,10 @@ from hammer.executables.argument_parser_utilities.dataset_arguments import (
 )
 from hammer.executables.argument_parser_utilities.model_selection_arguments import (
     add_model_selection_arguments,
+    add_model_training_arguments,
+)
+from hammer.executables.argument_parser_utilities.model_predictions_arguments import (
+    add_model_predictions_arguments,
 )
 
 __all__ = [
@@ -28,4 +32,5 @@ __all__ = [
     "add_dataset_arguments",
     "build_dataset_from_namespace",
     "add_model_selection_arguments",
+    "add_model_training_arguments",
 ]

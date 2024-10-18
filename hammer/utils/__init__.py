@@ -9,6 +9,11 @@ from rdkit.Chem import SanitizeMol  # pylint: disable=no-name-in-module
 from rdkit.Chem.rdchem import Mol
 
 
+def is_valid_smiles(smiles: str) -> bool:
+    """Check if a SMILES is valid."""
+    return MolFromSmiles(smiles) is not None
+
+
 def _smiles_to_molecule(smiles: str) -> Mol:
     """Convert a SMILES to an RDKit molecule."""
     molecule: Mol = MolFromSmiles(smiles)

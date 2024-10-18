@@ -8,7 +8,7 @@ def add_augmentation_settings_arguments(parser: ArgumentParser) -> ArgumentParse
     """Add arguments for augmentation settings to the parser."""
     for strategy_class in STRATEGIES:
         parser.add_argument(
-            f"--include-{strategy_class.pythonic_name()}",
+            f"--include-{strategy_class.pythonic_name().replace("_", "-")}",
             type=int,
             default=0,
             help=strategy_class.argparse_description(),

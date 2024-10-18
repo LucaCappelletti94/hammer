@@ -192,6 +192,60 @@ hammer feature-sets-synergy \
     --barplot-directory "tertiary_feature_sets_synergy_barplots"
 ```
 
+### Train a model variant
+
+```bash
+hammer train \
+    --verbose \
+    --dataset NPCHarmonized \
+    --include-extended-connectivity \
+    --include-layered \
+    --include-molecular-quantum-numbers \
+    --include-autocorrelation \
+    --test-size 0.2 \
+    --training-directory "npc.harmonized.v1.tar.gz"
+```
+
+### Predict
+
+You can run predictions for a single SMILES using the following command:
+
+```bash
+hammer predict \
+    --input "CN1[C@H]2CC[C@@H]1[C@@H](C(OC)=O)[C@@H](OC(C3=CC=CC=C3)=O)C2" \
+    --version npc.harmonized.v1
+```
+
+which will output:
+
+```bash
+SMILES: CN1[C@H]2CC[C@@H]1[C@@H](C(OC)=O)[C@@H](OC(C3=CC=CC=C3)=O)C2
+Alkaloids (0.9942)
+└── Ornithine alkaloids (0.9988)
+    └── Tropane alkaloids (0.9999)
+```
+
+Analogously, by running the following command for a multi-class compound:
+
+```bash
+hammer predict \
+    --input "CCC(C)C1NC(=O)C(Cc2ccccc2)N(C)C(=O)C(C(C)CC)N2C(=O)C(CCC2OC)NC(=O)C(CCCN=C(N)N)NC(=O)C(NC(=O)C(CO)OS(=O)(=O)O)C(C)OC1=O" \
+    --version npc.harmonized.v1
+```
+
+you will get the following output:
+
+```bash
+SMILES: CCC(C)C1NC(=O)C(Cc2ccccc2)N(C)C(=O)C(C(C)CC)N2C(=O)C(CCC2OC)NC(=O)C(CCCN=C(N)N)NC(=O)C(NC(=O)C(CO)OS(=O)(=O)O)C(C)OC1=O
+Amino acids and Peptides (0.9807)
+└── Oligopeptides (0.9994)
+Polyketides (0.9821)
+└── Oligopeptides (0.9994)
+    ├── Cyclic peptides (0.9999)
+    ├── Depsipeptides (0.9998)
+    └── Ahp-containing cyclodepsipeptides (0.9385)
+```
+
 ## Citation
 
 If you use this model in your research, please cite us:

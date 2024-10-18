@@ -16,7 +16,8 @@ from hammer.executables.feature_sets_evaluation import (
 from hammer.executables.visualize_features import add_visualize_features_subcommand
 from hammer.executables.dag_coverage import add_dag_coverage_subcommand
 from hammer.executables.feature_sets_synergy import add_feature_sets_synergy_subcommand
-
+from hammer.executables.train import add_train_subcommand
+from hammer.executables.predict import add_predict_subcommand
 
 def dispatcher():
     """Dispatch the command to the appropriate sub-command."""
@@ -26,5 +27,7 @@ def dispatcher():
     add_visualize_features_subcommand(subparsers)
     add_feature_sets_synergy_subcommand(subparsers)
     add_dag_coverage_subcommand(subparsers)
+    add_train_subcommand(subparsers)
+    add_predict_subcommand(subparsers)
     args: Namespace = parser.parse_args()
     args.func(args)

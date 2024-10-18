@@ -33,6 +33,7 @@ BLUE = "\033[94m"
 MAGENTA = "\033[95m"
 COLORS = [GREEN, BLUE, MAGENTA, CYAN, RED, YELLOW]
 
+
 def print_predictions(smiles: str, dag: LayeredDAG, predictions: Dict[str, pd.Series]):
     """Print the multi-label multi-class predictions to bash as a tree.
 
@@ -111,7 +112,7 @@ def predict(args: Namespace):
         complete_valid_extensions_separators = {
             extension + compression: separator
             for extension, separator in valid_extensions.items()
-            for compression in valid_compressions
+            for compression in valid_compressions + [""]
         }
         separator: Optional[str] = None
         for extension, sep in complete_valid_extensions_separators.items():

@@ -283,9 +283,9 @@ class Hammer:
         )
 
         return {
-            feature_class.pythonic_name(): feature_class().transform_molecules(
-                molecules
-            )
+            feature_class.pythonic_name(): feature_class(
+                verbose=self._verbose, n_jobs=self._n_jobs
+            ).transform_molecules(molecules)
             for feature_class in tqdm(
                 self._feature_settings.iter_features(),
                 desc="Computing features",

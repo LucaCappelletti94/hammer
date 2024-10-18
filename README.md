@@ -246,6 +246,15 @@ Polyketides (0.9821)
     └── Ahp-containing cyclodepsipeptides (0.9385)
 ```
 
+You can also run predictions for SMILES from a CSV, TSV or SSV file:
+
+```bash
+hammer predict \
+    --input "divergent_npc_entries/divergent_pathways.csv" \
+    --version npc.harmonized.v1
+    --verbose
+```
+
 ## Citation
 
 If you use this model in your research, please cite us:

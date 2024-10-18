@@ -7,11 +7,15 @@ from rdkit.Chem import MolFromSmiles  # pylint: disable=no-name-in-module
 from rdkit.Chem import MolToSmiles  # pylint: disable=no-name-in-module
 from rdkit.Chem import SanitizeMol  # pylint: disable=no-name-in-module
 from rdkit.Chem.rdchem import Mol
+from rdkit import RDLogger
 
 
 def is_valid_smiles(smiles: str) -> bool:
     """Check if a SMILES is valid."""
-    return MolFromSmiles(smiles) is not None
+    RDLogger.DisableLog("rdApp.error")
+    valid = MolFromSmiles(smiles) is not None
+    RDLogger.EnableLog("rdApp.error")
+    return valid
 
 
 def _smiles_to_molecule(smiles: str) -> Mol:

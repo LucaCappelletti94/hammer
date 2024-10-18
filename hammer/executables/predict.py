@@ -4,6 +4,7 @@ from argparse import Namespace
 from typing import Dict, Optional, List, Tuple
 import os
 import pandas as pd
+from tqdm.auto import tqdm
 from anytree import Node, RenderTree
 from hammer import Hammer
 from hammer.layered_dags import LayeredDAG
@@ -130,7 +131,14 @@ def predict(args: Namespace):
         smiles: List[str] = list(
             {
                 value
-                for value in df.values.flatten()
+                for row in tqdm(
+                    df.values,
+                    desc="Scraping SMILES",
+                    leave=False,
+                    dynamic_ncols=True,
+                    disable=not args.verbose,
+                )
+                for value in row
                 if isinstance(value, str) and is_valid_smiles(value)
             }
         )
@@ -141,6 +149,7 @@ def predict(args: Namespace):
 
     model = Hammer.load(args.version)
 
+    model._verbose = args.verbose
     predictions: Dict[str, pd.DataFrame] = model.predict_proba(
         smiles,
         canonicalize=args.canonicalize,

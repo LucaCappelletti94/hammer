@@ -67,7 +67,7 @@ setup(
         "pydot",
         "keras",
         "silence_tensorflow",
-        "environments_utils",
+        "environments_utils>=1.0.14",
         "scikit-fingerprints",
         "extra-keras-metrics",
         "compress_pickle",

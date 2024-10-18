@@ -15,12 +15,11 @@ class PubChemFingerprint(BinaryFeatureInterface):
         """Initialize the PubChem fingerprint feature."""
         if n_jobs is None or n_jobs < 1:
             n_jobs = cpu_count()
-        
-        self._fingerprint = PubChemFingerprintSKFP(n_jobs=n_jobs, verbose={
-                "leave": False,
-                "dynamic_ncols": True,
-                "disable": not verbose
-            })
+
+        self._fingerprint = PubChemFingerprintSKFP(
+            n_jobs=n_jobs,
+            verbose={"leave": False, "dynamic_ncols": True, "disable": not verbose},
+        )
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:
         """Transform a molecule into a feature representation."""

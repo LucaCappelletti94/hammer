@@ -15,13 +15,11 @@ class VanDerWaalsSurfaceAreaFingerprint(FeatureInterface):
         """Initialize the Van Der Waals Surface Area fingerprint feature."""
         if n_jobs is None or n_jobs < 1:
             n_jobs = cpu_count()
-        
+
         self._fingerprint = VSAFingerprint(
-            variant="all", n_jobs=n_jobs, verbose={
-                "leave": False,
-                "dynamic_ncols": True,
-                "disable": not verbose
-            }
+            variant="all",
+            n_jobs=n_jobs,
+            verbose={"leave": False, "dynamic_ncols": True, "disable": not verbose},
         )
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:

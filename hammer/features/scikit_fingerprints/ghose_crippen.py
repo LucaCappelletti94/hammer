@@ -17,13 +17,10 @@ class GhoseCrippenFingerprint(BinaryFeatureInterface):
         """Initialize the Ghose-Crippen fingerprint feature."""
         if n_jobs is None or n_jobs < 1:
             n_jobs = cpu_count()
-        
+
         self._fingerprint = GhoseCrippenFingerprintSKFP(
-            n_jobs=n_jobs, verbose={
-                "leave": False,
-                "dynamic_ncols": True,
-                "disable": not verbose
-            }
+            n_jobs=n_jobs,
+            verbose={"leave": False, "dynamic_ncols": True, "disable": not verbose},
         )
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:

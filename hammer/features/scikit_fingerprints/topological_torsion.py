@@ -20,13 +20,11 @@ class TopologicalTorsionFingerprint(BinaryFeatureInterface):
         if n_jobs is None or n_jobs < 1:
             n_jobs = cpu_count()
         self._fp_size = fp_size
-        
+
         self._fingerprint = TopologicalTorsionFingerprintSKFP(
-            fp_size=fp_size, n_jobs=n_jobs, verbose={
-                "leave": False,
-                "dynamic_ncols": True,
-                "disable": not verbose
-            }
+            fp_size=fp_size,
+            n_jobs=n_jobs,
+            verbose={"leave": False, "dynamic_ncols": True, "disable": not verbose},
         )
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:

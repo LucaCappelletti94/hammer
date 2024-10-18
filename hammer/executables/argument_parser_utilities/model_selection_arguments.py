@@ -40,6 +40,7 @@ def add_model_training_arguments(parser: ArgumentParser) -> ArgumentParser:
 
     return parser
 
+
 def add_model_selection_arguments(parser: ArgumentParser) -> ArgumentParser:
     """Add arguments for model selection to the parser."""
 

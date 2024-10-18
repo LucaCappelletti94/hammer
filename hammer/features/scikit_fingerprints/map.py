@@ -23,13 +23,12 @@ class MinHashedAtomPairFingerprint(BinaryFeatureInterface):
             n_jobs = cpu_count()
         self._fp_size = fp_size
         self._radius = radius
-        
+
         self._fingerprint = MAPFingerprint(
-            fp_size=fp_size, radius=radius, n_jobs=n_jobs, verbose={
-                "leave": False,
-                "dynamic_ncols": True,
-                "disable": not verbose
-            }
+            fp_size=fp_size,
+            radius=radius,
+            n_jobs=n_jobs,
+            verbose={"leave": False, "dynamic_ncols": True, "disable": not verbose},
         )
 
     def transform_molecules(self, molecules: Sequence[Mol]) -> np.ndarray:

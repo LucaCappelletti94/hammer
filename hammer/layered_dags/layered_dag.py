@@ -99,9 +99,7 @@ class LayeredDAG(Hashable):
             for parent in parents
         )
 
-    def has_edge(
-        self, src_node_name: str, dst_node_name: str, layer_name: str
-    ) -> bool:
+    def has_edge(self, src_node_name: str, dst_node_name: str, layer_name: str) -> bool:
         """Return whether an edge exists between two nodes in the DAG."""
         return dst_node_name in self.get_parents(src_node_name, layer_name)
 

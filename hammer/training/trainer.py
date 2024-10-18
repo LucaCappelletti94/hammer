@@ -54,7 +54,8 @@ class Trainer(Hashable):
     ) -> pd.DataFrame:
         """Train the classifier."""
         try:
-            import tensorflow as tf # pylint: disable=import-outside-toplevel
+            import tensorflow as tf  # pylint: disable=import-outside-toplevel
+
             gpus = tf.config.experimental.list_physical_devices("GPU")
             if gpus:
                 # Restrict TensorFlow to only use the first GPU
@@ -90,12 +91,8 @@ class Trainer(Hashable):
         classifier.save(self._training_directory)
 
         performance = {
-            "train": classifier.evaluate(
-                train_smiles, train_labels
-            ),
-            "valid": classifier.evaluate(
-                test_smiles, test_labels
-            )
+            "train": classifier.evaluate(train_smiles, train_labels),
+            "valid": classifier.evaluate(test_smiles, test_labels),
         }
 
         del classifier
@@ -104,7 +101,6 @@ class Trainer(Hashable):
 
         return performance
 
-   
     def holdouts(
         self,
         number_of_holdouts: int,
@@ -113,7 +109,8 @@ class Trainer(Hashable):
     ) -> pd.DataFrame:
         """Train the classifier."""
         try:
-            import tensorflow as tf # pylint: disable=import-outside-toplevel
+            import tensorflow as tf  # pylint: disable=import-outside-toplevel
+
             gpus = tf.config.experimental.list_physical_devices("GPU")
             if gpus:
                 # Restrict TensorFlow to only use the first GPU

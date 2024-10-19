@@ -56,16 +56,25 @@ def _visualize_feature(
     if np.isnan(x).any():
         return
 
-    from MulticoreTSNE import MulticoreTSNE # type: ignore
+    try:
+        from MulticoreTSNE import MulticoreTSNE # pylint: disable=import-outside-toplevel
+        tsne = MulticoreTSNE(
+            n_components=2,
+            n_jobs=arguments.n_jobs,
+            verbose=1,
+            n_iter_early_exag=5 if arguments.smoke_test else 250,
+            n_iter=10 if arguments.smoke_test else 1000,
+        )
+    except ImportError:
+        from sklearn.manifold import TSNE # pylint: disable=import-outside-toplevel
+        tsne = TSNE(
+            n_components=2,
+            n_jobs=arguments.n_jobs,
+            verbose=1,
+            n_iter=10 if arguments.smoke_test else 1000,
+        )
 
     pca = PCA(n_components=50)
-    tsne = MulticoreTSNE(
-        n_components=2,
-        n_jobs=arguments.n_jobs,
-        verbose=1,
-        n_iter_early_exag=5 if arguments.smoke_test else 250,
-        n_iter=10 if arguments.smoke_test else 1000,
-    )
 
     if x.shape[1] > 50:
         # First, we reduce the dimensionality of the features to 50

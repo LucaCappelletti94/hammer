@@ -1,7 +1,7 @@
 """Script to train the model on the selected feature sets."""
 
 from argparse import Namespace
-from typing import List, Dict
+from typing import Dict
 from hammer.feature_settings import FeatureSettings
 from hammer.training import Trainer
 from hammer.augmentation_settings import AugmentationSettings

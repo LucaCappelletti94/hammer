@@ -322,7 +322,7 @@ class Hammer:
         self._model.compile(
             optimizer=Adam(),
             loss=BinaryFocalCrossentropy(
-                apply_class_balancing=True, label_smoothing=0.05, gamma=3.0, alpha=0.2
+                apply_class_balancing=True, gamma=3.0, alpha=0.2
             ),
             metrics={
                 layer_name: get_minimal_multiclass_metrics()

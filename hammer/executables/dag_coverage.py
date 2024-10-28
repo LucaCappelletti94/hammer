@@ -1,6 +1,6 @@
 """Script to compute the dataset coverage of the current chemical DAG."""
 
-from argparse import Namespace
+from argparse import Namespace, ArgumentParser
 from typing import Dict, Type
 import pandas as pd
 from hammer.datasets import Dataset
@@ -11,12 +11,8 @@ from hammer.executables.argument_parser_utilities import (
 )
 
 
-def add_dag_coverage_subcommand(sub_parser_action: "SubParsersAction"):
+def add_dag_coverage_subcommand(subparser: ArgumentParser):
     """Add the DAG coverage sub-command to the parser."""
-    subparser = sub_parser_action.add_parser(
-        "dag-coverage",
-        help="Compute the dataset coverage of the current chemical DAG.",
-    )
     subparser = add_dataset_arguments(add_shared_arguments(subparser))
 
     subparser.set_defaults(func=compute_dag_coverage)

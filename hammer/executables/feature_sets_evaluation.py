@@ -1,6 +1,6 @@
 """Script to train the model on each feature set to compare their performance."""
 
-from argparse import Namespace
+from argparse import Namespace, ArgumentParser
 from typing import List
 from tqdm.auto import tqdm
 import pandas as pd
@@ -13,12 +13,8 @@ from hammer.executables.argument_parser_utilities import (
 from hammer.executables.feature_sets_synergy import save_performance
 
 
-def add_feature_sets_evaluation_subcommand(sub_parser_action: "SubParsersAction"):
+def add_feature_sets_evaluation_subcommand(subparser: ArgumentParser):
     """Add the feature sets evaluation sub-command to the parser."""
-    subparser = sub_parser_action.add_parser(
-        "feature-sets-evaluation",
-        help="Evaluate the performance of different feature sets.",
-    )
     subparser = add_model_selection_arguments(subparser)
 
     subparser.set_defaults(func=feature_sets_evaluation)

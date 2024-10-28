@@ -1,11 +1,11 @@
 """Train the model on one feature sets plus others to determine their synergy."""
 
 import os
-from argparse import Namespace
+from argparse import Namespace, ArgumentParser
 from typing import List
 from tqdm.auto import tqdm
 import pandas as pd
-from barplots import barplots
+from barplots import barplots # type: ignore
 from hammer.executables.holdouts_evaluation import holdouts_evaluation
 from hammer.feature_settings import FeatureSettings, FEATURES
 from hammer.executables.argument_parser_utilities import (
@@ -13,12 +13,8 @@ from hammer.executables.argument_parser_utilities import (
 )
 
 
-def add_feature_sets_synergy_subcommand(sub_parser_action: "SubParsersAction"):
+def add_feature_sets_synergy_subcommand(subparser: ArgumentParser) -> None:
     """Add the feature sets synergy sub-command to the parser."""
-    subparser = sub_parser_action.add_parser(
-        "feature-sets-synergy",
-        help="Evaluate the performance of different feature sets.",
-    )
     subparser = add_model_selection_arguments(subparser)
 
     subparser.add_argument(
@@ -45,7 +41,10 @@ def save_performance(performance: List[pd.DataFrame], args: Namespace):
     barplots(
         performance_df,
         path=f"{args.barplot_directory}/{{feature}}_feature_sets.png",
-        groupby=["subset", "feature_set", "label"],
+        groupby=[
+            "subset",
+            "feature_set",
+        ],
         show_last_level_as_legend=False,
         subplots=True,
         unique_minor_labels=True,

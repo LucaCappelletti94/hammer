@@ -1,23 +1,19 @@
 """Script to run model predictions."""
 
-from argparse import Namespace
+from argparse import Namespace, ArgumentParser
 from typing import Dict, Optional, List, Tuple
 import os
 import pandas as pd
 from tqdm.auto import tqdm
 from anytree import Node, RenderTree
 from hammer import Hammer
-from hammer.dags import DAG
+from hammer.dags import LayeredDAG
 from hammer.utils import is_valid_smiles
 from hammer.executables.argument_parser_utilities import add_model_predictions_arguments
 
 
-def add_predict_subcommand(sub_parser_action: "SubParsersAction"):
+def add_predict_subcommand(subparser: ArgumentParser):
     """Add the predict sub-command to the parser."""
-    subparser = sub_parser_action.add_parser(
-        "predict",
-        help="Run model predictions.",
-    )
     subparser = add_model_predictions_arguments(subparser)
 
     subparser.set_defaults(func=predict)
@@ -35,7 +31,7 @@ MAGENTA = "\033[95m"
 COLORS = [GREEN, BLUE, MAGENTA, CYAN, RED, YELLOW]
 
 
-def print_predictions(smiles: str, dag: DAG, predictions: Dict[str, pd.Series]):
+def print_predictions(smiles: str, dag: LayeredDAG, predictions: Dict[str, pd.Series]):
     """Print the multi-label multi-class predictions to bash as a tree.
 
     Implementation details
@@ -47,7 +43,7 @@ def print_predictions(smiles: str, dag: DAG, predictions: Dict[str, pd.Series]):
     print(f"{BOLD}{CYAN}SMILES:{RESET} {smiles}")
     nodes: Dict[Tuple[Optional[str], str], Node] = {}
     last_layer_name: Optional[str] = None
-    for i, layer_name in enumerate(dag.get_layer_names()):
+    for i, layer_name in enumerate(dag.layer_names()):
         layer_color: str = COLORS[i % len(COLORS)]
         # We get the predictions associated with the layer.
         layer_predictions: pd.Series = predictions[layer_name]

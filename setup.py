@@ -76,6 +76,7 @@ setup(
         "extra-keras-metrics>=2.0.12",
         "compress_pickle",
         "typeguard",
+        "matchms",
         "anytree"
     ],
     extras_require=extras,

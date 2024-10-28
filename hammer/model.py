@@ -34,6 +34,7 @@ from tqdm.keras import TqdmCallback
 from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
+from matchms import Spectrum
 import compress_pickle  # type: ignore
 from sklearn.preprocessing import RobustScaler  # type: ignore
 from extra_keras_metrics import (
@@ -221,9 +222,9 @@ class Hammer:
 
     def fit(
         self,
-        train_smiles: List[str],
+        train_samples: Union[List[str], List[Spectrum]],
         train_labels: np.ndarray,
-        validation_smiles: List[str],
+        validation_smiles: Union[List[str], List[Spectrum]],
         validation_labels: np.ndarray,
         augmentation_settings: Optional[AugmentationSettings] = None,
         model_checkpoint_path: str = "checkpoints/model_checkpoint.keras",
@@ -288,7 +289,7 @@ class Hammer:
         learning_rate_scheduler = ReduceLROnPlateau(
             monitor="val_AUPRC",
             factor=0.5,
-            patience=10,
+            patience=20,
             verbose=0,
             mode="max",
             min_delta=1e-4,
@@ -298,7 +299,7 @@ class Hammer:
 
         early_stopping = EarlyStopping(
             monitor="val_AUPRC",
-            patience=50,
+            patience=100,
             verbose=0,
             mode="max",
             restore_best_weights=True,
@@ -311,22 +312,22 @@ class Hammer:
         self._metadata["batch_size"] = batch_size
         self._metadata["maximal_number_of_epochs"] = maximal_number_of_epochs
 
-        train_smiles = into_canonical_smiles(
-            train_smiles, verbose=self._verbose, n_jobs=self._n_jobs
+        train_samples = into_canonical_smiles(
+            train_samples, verbose=self._verbose, n_jobs=self._n_jobs
         )
         validation_smiles = into_canonical_smiles(
             validation_smiles, verbose=self._verbose, n_jobs=self._n_jobs
         )
 
         if augmentation_settings is not None:
-            (train_smiles, train_labels) = augmentation_settings.augment(
-                train_smiles, train_labels, n_jobs=self._n_jobs, verbose=self._verbose
+            (train_samples, train_labels) = augmentation_settings.augment(
+                train_samples, train_labels, n_jobs=self._n_jobs, verbose=self._verbose
             )
             self._metadata["augmentation_settings"] = augmentation_settings.to_dict()
         else:
             self._metadata["augmentation_settings"] = None
 
-        train_features: Dict[str, np.ndarray] = self._smiles_to_features(train_smiles)
+        train_features: Dict[str, np.ndarray] = self._smiles_to_features(train_samples)
         validation_features: Dict[str, np.ndarray] = self._smiles_to_features(
             validation_smiles
         )

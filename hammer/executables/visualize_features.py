@@ -3,15 +3,15 @@
 import os
 from collections import Counter
 from typing import Type, List, Dict
-from argparse import Namespace
+from argparse import Namespace, ArgumentParser
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 from rdkit.Chem.rdchem import Mol
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import RobustScaler
+from sklearn.decomposition import PCA  # type: ignore
+from sklearn.preprocessing import RobustScaler  # type: ignore
 
-from matplotlib.colors import TABLEAU_COLORS
+from matplotlib.colors import TABLEAU_COLORS as TABLEAU_COLORS_DICT
 from hammer.datasets import Dataset
 from hammer.dags import DAG
 from hammer.molecular_features import FeatureInterface
@@ -29,7 +29,7 @@ from hammer.executables.argument_parser_utilities import (
 from hammer.utils import smiles_to_molecules, into_canonical_smiles
 
 
-TABLEAU_COLORS: List[str] = list(TABLEAU_COLORS.values())
+TABLEAU_COLORS: List[str] = list(TABLEAU_COLORS_DICT.values())
 
 
 def _visualize_feature(
@@ -37,7 +37,7 @@ def _visualize_feature(
     labels: Dict[str, np.ndarray],
     most_common: Dict[str, np.ndarray],
     top: Dict[str, List[str]],
-    feature: Type[FeatureInterface],
+    feature: FeatureInterface,
     arguments: Namespace,
 ):
     """Visualize a feature."""
@@ -57,7 +57,10 @@ def _visualize_feature(
         return
 
     try:
-        from MulticoreTSNE import MulticoreTSNE # pylint: disable=import-outside-toplevel
+        from MulticoreTSNE import (
+            MulticoreTSNE,
+        )  # pylint: disable=import-outside-toplevel
+
         tsne = MulticoreTSNE(
             n_components=2,
             n_jobs=arguments.n_jobs,
@@ -66,7 +69,8 @@ def _visualize_feature(
             n_iter=10 if arguments.smoke_test else 1000,
         )
     except ImportError:
-        from sklearn.manifold import TSNE # pylint: disable=import-outside-toplevel
+        from sklearn.manifold import TSNE  # pylint: disable=import-outside-toplevel
+
         tsne = TSNE(
             n_components=2,
             n_jobs=arguments.n_jobs,
@@ -135,12 +139,8 @@ def _visualize_feature(
     plt.close()
 
 
-def add_visualize_features_subcommand(sub_parser_action: "SubParserAction"):
+def add_visualize_features_subcommand(visualize_features_parser: ArgumentParser):
     """Add the visualize features sub-command to the parser."""
-    visualize_features_parser = sub_parser_action.add_parser(
-        "visualize", help="Visualize the features of the dataset."
-    )
-
     visualize_features_parser = add_dataset_arguments(
         add_features_arguments(
             add_shared_arguments(

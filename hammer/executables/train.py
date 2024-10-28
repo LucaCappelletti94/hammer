@@ -1,6 +1,6 @@
 """Script to train the model on the selected feature sets."""
 
-from argparse import Namespace
+from argparse import Namespace, ArgumentParser
 from typing import Dict
 from hammer.feature_settings import FeatureSettings
 from hammer.training import Trainer
@@ -13,12 +13,8 @@ from hammer.executables.argument_parser_utilities import (
 )
 
 
-def add_train_subcommand(sub_parser_action: "SubParsersAction"):
+def add_train_subcommand(subparser: ArgumentParser):
     """Add the feature sets evaluation sub-command to the parser."""
-    subparser = sub_parser_action.add_parser(
-        "train",
-        help="Train the model on the selected feature sets.",
-    )
     subparser = add_model_training_arguments(subparser)
 
     subparser.set_defaults(func=train)

@@ -1974,17 +1974,11 @@
         "Aminoglycosides": [
             "Aminosugars and aminoglycosides"
         ],
-        "Purine nucleosides": [
+        "Purine nucleos(t)ides": [
             "Nucleosides"
         ],
-        "Purine nucleotides": [
-            "Nucleotides"
-        ],
-        "Pyrimidine nucleosides": [
+        "Pyrimidine nucleos(t)ides": [
             "Nucleosides"
-        ],
-        "Pyrimidine nucleotides": [
-            "Nucleotides"
         ],
         "Streptothricins and derivatives": [
             "Nucleosides"
@@ -2339,9 +2333,6 @@
             "Carbohydrates"
         ],
         "Nucleosides": [
-            "Carbohydrates"
-        ],
-        "Nucleotides": [
             "Carbohydrates"
         ],
         "Miscellaneous alkaloids": [

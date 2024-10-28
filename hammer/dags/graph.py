@@ -41,6 +41,17 @@ class Graph(Hashable):
 
         return adjacency_matrix
 
+    def symmetric_adjacency_matrix(self) -> csr_matrix:
+        """Return the symmetric adjacency matrix of the graph."""
+        adjacency = self.adjacency_matrix()
+        symmetric_adjacency = adjacency + adjacency.T
+        symmetric_adjacency.setdiag(1)
+
+        # we clip the values to 1
+        symmetric_adjacency.data = np.clip(symmetric_adjacency.data, 0, 1)
+
+        return symmetric_adjacency
+
     def get_node_out_degree(self, node_name: str) -> int:
         """Return the out degree of a node."""
         return len(self.outbounds(node_name))
@@ -69,28 +80,39 @@ class Graph(Hashable):
 
     def symmetric_laplacian(self) -> csr_matrix:
         """Return the symmetric Laplacian of the graph."""
-        adjacency = self.adjacency_matrix()
-        adjacency_plus_identity = adjacency + eye(adjacency.shape[0])
-        d = diags(
-            np.power(np.array(adjacency_plus_identity.sum(axis=1)), -0.5).flatten(), 0
-        )
-        return adjacency_plus_identity.dot(d).transpose().dot(d).tocsr().astype(np.float32)
+        adjacency = self.symmetric_adjacency_matrix()
+
+        d = diags(np.power(np.array(adjacency.sum(axis=1)), -0.5).flatten())
+        return adjacency.dot(d).transpose().dot(d).tocsr().astype(np.float32)
+
+    def transposed_symmetric_laplacian(self) -> csr_matrix:
+        """Return the transposed symmetric Laplacian of the graph."""
+        adjacency_transposed = self.adjacency_matrix().T
+
+        # We make sure that the anti-diagonal is entirely filled with ones
+        adjacency_transposed.setdiag(1)
+
+        d = diags(np.power(np.array(adjacency_transposed.sum(axis=1)), -0.5).flatten())
+        return adjacency_transposed.dot(d).transpose().dot(d).tocsr().astype(np.float32)
 
     def laplacian(self) -> csr_matrix:
         """Return the Laplacian of the graph."""
         adjacency = self.adjacency_matrix()
-        adjacency_plus_identity = adjacency + eye(adjacency.shape[0])
-        d = diags(np.power(np.array(adjacency_plus_identity.sum(1)), -1).flatten(), 0)
-        return d.dot(adjacency_plus_identity).tocsr().astype(np.float32)
+
+        # We make sure that the main diagonal is entirely filled with ones
+        adjacency.setdiag(1)
+
+        d = diags(np.power(np.array(adjacency.sum(axis=1)), -1).flatten())
+        return d.dot(adjacency).tocsr().astype(np.float32)
 
     def transposed_laplacian(self) -> csr_matrix:
         """Return the transposed Laplacian of the graph."""
         adjacency_transposed = self.adjacency_matrix().T
-        adjacency_transposed_plus_identity = adjacency_transposed + eye(
-            adjacency_transposed.shape[0]
-        )
+
+        # We make sure that the anti-diagonal is entirely filled with ones
+        adjacency_transposed.setdiag(1)
+
         d = diags(
-            np.power(np.array(adjacency_transposed_plus_identity.sum(1)), -1).flatten(),
-            0,
+            np.power(np.array(adjacency_transposed.sum(axis=1)), -1).flatten(),
         )
-        return d.dot(adjacency_transposed_plus_identity).tocsr().astype(np.float32)
+        return d.dot(adjacency_transposed).tocsr().astype(np.float32)

@@ -45,10 +45,10 @@ def save_performance(performance: List[pd.DataFrame], args: Namespace):
     barplots(
         performance_df,
         path=f"{args.barplot_directory}/{{feature}}_feature_sets.png",
-        groupby=["subset", "feature_set"],
+        groupby=["subset", "feature_set", "label"],
         show_last_level_as_legend=False,
         subplots=True,
-        unique_minor_labels=False,
+        unique_minor_labels=True,
         orientation="horizontal",
         height=7,
         legend_position="lower left",

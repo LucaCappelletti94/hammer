@@ -47,13 +47,13 @@ class NPCScrapedDataset(Dataset):
         for entry in compress_json.local_load("npc-scraped.json.gz"):
             labels = np.zeros(self.layered_dag().number_of_nodes(), dtype=np.uint8)
 
-            for node_label in entry["pathways"]:
+            for node_label in entry["pathway_results"]:
                 labels[self.layered_dag().node_id(node_label)] = 1
 
-            for node_label in entry["superclasses"]:
+            for node_label in entry["superclass_results"]:
                 labels[self.layered_dag().node_id(node_label)] = 1
 
-            for node_label in entry["classes"]:
+            for node_label in entry["class_results"]:
                 labels[self.layered_dag().node_id(node_label)] = 1
 
             yield (

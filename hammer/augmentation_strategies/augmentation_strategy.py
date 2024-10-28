@@ -1,17 +1,18 @@
 """Submodule providing strategies to extend the smiles in the training dataset."""
 
-from typing import List
+from typing import List, Optional
 from multiprocessing import Pool
 from abc import ABC, abstractmethod
 from tqdm.auto import tqdm
-from rdkit import RDLogger
+from rdkit.RDLogger import EnableLog, DisableLog # type: ignore
 
 
 class AugmentationStrategy(ABC):
     """Base class for augmentation strategies."""
 
-    def __init__(self, n_jobs: int = 1, verbose: bool = True):
+    def __init__(self, maximal_number: int, n_jobs: Optional[int] = 1, verbose: bool = True):
         """Initialize the augmentation strategy."""
+        self._maximal_number = maximal_number
         self._n_jobs = n_jobs
         self._verbose = verbose
 
@@ -39,7 +40,7 @@ class AugmentationStrategy(ABC):
 
     def augment_all(self, smiles: List[str]) -> List[List[str]]:
         """Augment a list of smiles."""
-        RDLogger.DisableLog("rdApp.*")
+        DisableLog("rdApp.*") # pylint: disable=no-member
         with Pool(self._n_jobs) as pool:
             results = list(
                 tqdm(
@@ -54,6 +55,6 @@ class AugmentationStrategy(ABC):
             pool.close()
             pool.join()
 
-        RDLogger.EnableLog("rdApp.*")
+        EnableLog("rdApp.*") # pylint: disable=no-member
 
         return results

@@ -16,11 +16,11 @@ class UnknownDAGLayer(ValueError):
 class UnknownDAGNode(ValueError):
     """Exception raised when a DAG node is not found."""
 
-    def __init__(self, node_name: str, layer_name: str, available_nodes: List[str]):
+    def __init__(self, node_name: str, available_nodes: List[str]):
         """Initialize the UnknownDAGNode exception."""
         super().__init__(
-            f"Node '{node_name}' not found in layer "
-            f"'{layer_name}' with available nodes: {available_nodes}"
+            f"Node '{node_name}' not found "
+            f"with available nodes: {available_nodes}"
         )
 
 

@@ -81,8 +81,8 @@ We value every contribution, whether it’s a small improvement or a major addit
 
 To begin contributing, explore the following resources:
 
-- [Dataset Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/datasets/smiles_dataset.py)
-- [DAG Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/layered_dags/layered_dag.py)
+- [Dataset Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/datasets/dataset.py)
+- [DAG Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/dags/layered_dag.py)
 - [SMILES Feature Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/features/feature_interface.py)
 - [SMILES Augmentation Interface](https://github.com/LucaCappelletti94/hammer/blob/main/hammer/augmentation_strategies/augmentation_strategy.py)
 

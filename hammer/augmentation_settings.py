@@ -96,10 +96,10 @@ class AugmentationSettings(Hashable):
     def augment(
         self,
         smiles: List[str],
-        labels: Dict[str, np.ndarray],
+        labels: np.ndarray,
         n_jobs: Optional[int] = None,
         verbose: bool = True,
-    ) -> Tuple[List[str], Dict[str, np.ndarray]]:
+    ) -> Tuple[List[str], np.ndarray]:
         """Augment the dataset."""
         if not self.includes_augmentations():
             return smiles, labels

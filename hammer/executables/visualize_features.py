@@ -13,8 +13,8 @@ from sklearn.preprocessing import RobustScaler
 
 from matplotlib.colors import TABLEAU_COLORS
 from hammer.datasets import Dataset
-from hammer.layered_dags import LayeredDAG
-from hammer.features import FeatureInterface
+from hammer.dags import DAG
+from hammer.molecular_features import FeatureInterface
 from hammer.feature_settings import FeatureSettings
 from hammer.augmentation_settings import AugmentationSettings
 from hammer.executables.argument_parser_utilities import (
@@ -173,7 +173,7 @@ def visualize(arguments: Namespace):
     """Train the model."""
 
     dataset: Type[Dataset] = build_dataset_from_namespace(namespace=arguments)
-    dag: Type[LayeredDAG] = dataset.layered_dag()
+    dag: Type[DAG] = dataset.layered_dag()
     smiles, labels = dataset.all_smiles()
 
     # We construct the augmentation strategies from the argument parser.

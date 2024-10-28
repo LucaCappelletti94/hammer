@@ -1,12 +1,12 @@
 """Submodule implementing the NPCDataset class, offering a corrected version of the NPC dataset."""
 
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Tuple
 import os
 import compress_json
 import pandas as pd
-from hammer.layered_dags import NPCLayeredDAG
-from hammer.datasets.smiles_dataset import Dataset
-from hammer.datasets.labeled_smiles import LabeledSMILES
+import numpy as np
+from hammer.dags import NPCDAG
+from hammer.datasets.dataset import Dataset
 
 
 class NPCDataset(Dataset):
@@ -24,7 +24,7 @@ class NPCDataset(Dataset):
             maximal_number_of_molecules=maximal_number_of_molecules,
             verbose=verbose,
         )
-        self._layered_dag = NPCLayeredDAG()
+        self._layered_dag = NPCDAG()
 
     @staticmethod
     def name() -> str:
@@ -36,43 +36,40 @@ class NPCDataset(Dataset):
         """Return the description of the NPC dataset."""
         return "The NP Classifier dataset with minor corrections."
 
-    @staticmethod
-    def multi_label() -> bool:
-        """Return whether the NPC dataset is multi-label."""
-        return True
-
-    def layered_dag(self) -> NPCLayeredDAG:
+    def layered_dag(self) -> NPCDAG:
         """Return the Layered DAG for the NPC dataset."""
         return self._layered_dag
 
-    def number_of_smiles(self) -> int:
+    def number_of_samples(self) -> int:
         """Return the number of labeled SMILES in the NPC dataset."""
-        return sum(1 for _ in self.iter_labeled_smiles())
+        return sum(1 for _ in self.iter_samples())
 
-    def iter_labeled_smiles(self) -> Iterator[LabeledSMILES]:
+    def iter_samples(self) -> Iterator[Tuple[str, np.ndarray]]:
         """Return an iterator over the labeled SMILES in the NPC dataset."""
         local_path = os.path.join(os.path.dirname(__file__), "categorical.csv.gz")
         categoricals = pd.read_csv(local_path, compression="gzip")
+        graph: NPCDAG = self.layered_dag()
 
-        for entry in categoricals.itertuples():
-            yield LabeledSMILES(
-                entry.smiles,
-                {
-                    "pathways": [entry.pathway_label],
-                    "superclasses": [entry.superclass_label],
-                    "classes": [entry.class_label],
-                },
-            )
+        for _, entry in categoricals.iterrows():
+            labels = np.zeros(graph.number_of_nodes(), dtype=np.uint8)
+            labels[graph.node_id(entry["pathway_label"])] = 1
+            labels[graph.node_id(entry["superclass_label"])] = 1
+            labels[graph.node_id(entry["class_label"])] = 1
+            yield (entry["smiles"], labels)
 
         multi_labels = compress_json.local_load("multi_label.json")
         relabelled = compress_json.local_load("relabelled.json")
 
         for entry in multi_labels + relabelled:
-            yield LabeledSMILES(
+            labels = np.zeros(graph.number_of_nodes(), dtype=np.uint8)
+            for node_label in entry["pathway_labels"]:
+                labels[graph.node_id(node_label)] = 1
+            for node_label in entry["superclass_labels"]:
+                labels[graph.node_id(node_label)] = 1
+            for node_label in entry["class_labels"]:
+                labels[graph.node_id(node_label)] = 1
+
+            yield (
                 entry["smiles"],
-                {
-                    "pathways": entry["pathway_labels"],
-                    "superclasses": entry["superclass_labels"],
-                    "classes": entry["class_labels"],
-                },
+                labels,
             )

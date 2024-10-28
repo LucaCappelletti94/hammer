@@ -1,6 +1,6 @@
 """Submodule providing an augmentation strategy to generate stereoisomers."""
 
-from typing import List
+from typing import List, Optional
 from rdkit.Chem import MolToSmiles, MolFromSmiles  # pylint: disable=no-name-in-module
 from rdkit.Chem.rdchem import Mol
 from rdkit.Chem import SanitizeMol  # pylint: disable=no-name-in-module
@@ -19,7 +19,7 @@ class StereoisomersAugmentationStrategy(AugmentationStrategy):
     def __init__(
         self,
         maximal_number: int = 64,
-        n_jobs: int = None,
+        n_jobs: Optional[int] = None,
         verbose: bool = True,
     ):
         """
@@ -39,7 +39,7 @@ class StereoisomersAugmentationStrategy(AugmentationStrategy):
             unique=True,
             maxIsomers=maximal_number,
         )
-        super().__init__(n_jobs=n_jobs, verbose=verbose)
+        super().__init__(maximal_number=maximal_number, n_jobs=n_jobs, verbose=verbose)
 
     def name(self) -> str:
         """Return the name of the augmentation strategy."""

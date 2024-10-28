@@ -1,6 +1,6 @@
 """Submodule providing an augmentation strategy based on precomputed Pickaxe molecules."""
 
-from typing import List
+from typing import List, Optional
 import random
 import compress_json
 from tqdm.auto import tqdm
@@ -13,7 +13,10 @@ class PickaxeAugmentationStrategy(AugmentationStrategy):
     """Generate molecules from a precomputed Pickaxe file."""
 
     def __init__(
-        self, maximal_number: int = 64, n_jobs: int = None, verbose: bool = True
+        self,
+        maximal_number: int = 64,
+        n_jobs: Optional[int] = None,
+        verbose: bool = True,
     ):
         """
         Parameters
@@ -26,8 +29,7 @@ class PickaxeAugmentationStrategy(AugmentationStrategy):
             Whether to display a progress
         """
         self._pickaxe = compress_json.local_load("pickaxe_normalized.json.xz")
-        self._maximal_number = maximal_number
-        super().__init__(n_jobs=n_jobs, verbose=verbose)
+        super().__init__(maximal_number=maximal_number, n_jobs=n_jobs, verbose=verbose)
 
     def name(self) -> str:
         """Return the name of the augmentation strategy."""
@@ -45,11 +47,11 @@ class PickaxeAugmentationStrategy(AugmentationStrategy):
 
     def augment(self, smiles: str) -> List[str]:
         """Augment a smiles."""
-        smiles = self._pickaxe.get(smiles, [])
-        if len(smiles) > self._maximal_number:
-            random.shuffle(smiles)
-            smiles = smiles[: self._maximal_number]
-        return smiles
+        smiles_transformations = self._pickaxe.get(smiles, [])
+        if len(smiles_transformations) > self._maximal_number:
+            random.shuffle(smiles_transformations)
+            smiles_transformations = smiles_transformations[: self._maximal_number]
+        return smiles_transformations
 
     def augment_all(self, smiles: List[str]) -> List[List[str]]:
         """Augment a list of smiles."""

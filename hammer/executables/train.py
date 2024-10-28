@@ -36,7 +36,7 @@ def train(args: Namespace):
 
     trainer: Trainer = Trainer(
         maximal_number_of_epochs=1 if args.smoke_test else 10_000,
-        smiles_dataset=build_dataset_from_namespace(args),
+        dataset=build_dataset_from_namespace(args),
         feature_settings=feature_settings,
         augmentation_settings=augmentation_settings,
         training_directory=args.training_directory,

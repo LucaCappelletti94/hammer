@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 from anytree import Node, RenderTree
 from hammer import Hammer
-from hammer.layered_dags import LayeredDAG
+from hammer.dags import DAG
 from hammer.utils import is_valid_smiles
 from hammer.executables.argument_parser_utilities import add_model_predictions_arguments
 
@@ -35,7 +35,7 @@ MAGENTA = "\033[95m"
 COLORS = [GREEN, BLUE, MAGENTA, CYAN, RED, YELLOW]
 
 
-def print_predictions(smiles: str, dag: LayeredDAG, predictions: Dict[str, pd.Series]):
+def print_predictions(smiles: str, dag: DAG, predictions: Dict[str, pd.Series]):
     """Print the multi-label multi-class predictions to bash as a tree.
 
     Implementation details

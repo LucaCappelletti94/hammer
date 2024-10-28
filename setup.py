@@ -30,6 +30,9 @@ test_deps = [
     "pytest",
     "pytest-cov",
     "pytest-readme",
+    "scipy-stubs",
+    "pandas-stubs",
+    "types-tqdm",
     "validate_version_code",
 ]
 
@@ -70,7 +73,7 @@ setup(
         "silence_tensorflow",
         "environments_utils>=1.0.14",
         "scikit-fingerprints",
-        "extra-keras-metrics",
+        "extra-keras-metrics>=2.0.12",
         "compress_pickle",
         "typeguard",
         "anytree"

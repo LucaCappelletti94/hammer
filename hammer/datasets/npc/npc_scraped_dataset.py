@@ -1,10 +1,10 @@
 """Submodule providing a variant of the NPC Dataset labelled by running NP Classifier on its own SMILES."""
 
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Tuple
 import compress_json
-from hammer.layered_dags import NPCLayeredDAG
-from hammer.datasets.smiles_dataset import Dataset
-from hammer.datasets.labeled_smiles import LabeledSMILES
+import numpy as np
+from hammer.datasets.dataset import Dataset
+from hammer.dags import NPCDAG
 
 
 class NPCScrapedDataset(Dataset):
@@ -22,7 +22,7 @@ class NPCScrapedDataset(Dataset):
             maximal_number_of_molecules=maximal_number_of_molecules,
             verbose=verbose,
         )
-        self._layered_dag = NPCLayeredDAG()
+        self._layered_dag = NPCDAG()
 
     @staticmethod
     def name() -> str:
@@ -34,27 +34,29 @@ class NPCScrapedDataset(Dataset):
         """Return the description of the NPC dataset."""
         return "The NPC dataset labelled by running NP Classifier on its own SMILES."
 
-    @staticmethod
-    def multi_label() -> bool:
-        """Return whether the NPC dataset is multi-label."""
-        return True
-
-    def layered_dag(self) -> NPCLayeredDAG:
+    def layered_dag(self) -> NPCDAG:
         """Return the Layered DAG for the NPC dataset."""
         return self._layered_dag
 
-    def number_of_smiles(self) -> int:
+    def number_of_samples(self) -> int:
         """Return the number of labeled SMILES in the NPC dataset."""
-        return sum(1 for _ in self.iter_labeled_smiles())
+        return sum(1 for _ in self.iter_samples())
 
-    def iter_labeled_smiles(self) -> Iterator[LabeledSMILES]:
+    def iter_samples(self) -> Iterator[Tuple[str, np.ndarray]]:
         """Return an iterator over the labeled SMILES in the NPC dataset."""
         for entry in compress_json.local_load("npc-scraped.json.gz"):
-            yield LabeledSMILES(
+            labels = np.zeros(self.layered_dag().number_of_nodes(), dtype=np.uint8)
+
+            for node_label in entry["pathways"]:
+                labels[self.layered_dag().node_id(node_label)] = 1
+
+            for node_label in entry["superclasses"]:
+                labels[self.layered_dag().node_id(node_label)] = 1
+
+            for node_label in entry["classes"]:
+                labels[self.layered_dag().node_id(node_label)] = 1
+
+            yield (
                 entry["smiles"],
-                {
-                    "pathways": entry["pathway_results"],
-                    "superclasses": entry["superclass_results"],
-                    "classes": entry["class_results"],
-                },
+                labels
             )

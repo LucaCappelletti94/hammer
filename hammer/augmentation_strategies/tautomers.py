@@ -29,8 +29,7 @@ class TautomersAugmentationStrategy(AugmentationStrategy):
         verbose: bool = True
             Whether to display a progress bar.
         """
-        self._maximal_number = maximal_number
-        super().__init__(n_jobs=n_jobs, verbose=verbose)
+        super().__init__(maximal_number=maximal_number, n_jobs=n_jobs, verbose=verbose)
 
     def name(self) -> str:
         """Return the name of the augmentation strategy."""

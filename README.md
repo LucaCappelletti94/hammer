@@ -81,9 +81,9 @@ hammer feature-sets-evaluation \
     --dataset NPC \
     --test-size 0.2 \
     --validation-size 0.2 \
-    --performance-path "feature_sets_evaluation.csv" \
-    --training-directory "feature_selection_training" \
-    --barplot-directory "feature_sets_evaluation_barplots"
+    --performance-path "performance/feature_sets_evaluation.csv" \
+    --training-directory "training/feature_selection" \
+    --barplot-directory "barplots/feature_sets_evaluation"
 ```
 
 ```bash
@@ -93,9 +93,9 @@ hammer feature-sets-evaluation \
     --dataset NPCHarmonized \
     --test-size 0.2 \
     --validation-size 0.2 \
-    --performance-path "feature_sets_evaluation_harmonized.csv" \
-    --training-directory "feature_selection_training_harmonized" \
-    --barplot-directory "feature_sets_evaluation_harmonized_barplots"
+    --performance-path "performance/feature_sets_evaluation_harmonized.csv" \
+    --training-directory "training/feature_selection_harmonized" \
+    --barplot-directory "barplots/feature_sets_evaluation_harmonized"
 ```
 
 Executing this command will generate the barplots [you can find in this directory](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots). In the following barplot, you will find the AUPRC for each class, for validation, test a, for each feature set, averaged over all holdouts:
@@ -136,9 +136,9 @@ hammer feature-sets-evaluation \
     --include-map4 \
     --test-size 0.2 \
     --validation-size 0.2 \
-    --performance-path "map4_feature_evaluation.csv" \
-    --training-directory "map4_feature_training" \
-    --barplot-directory "map4_feature_evaluation"
+    --performance-path "performance/map4_feature_evaluation.csv" \
+    --training-directory "training/map4_feature" \
+    --barplot-directory "barplots/map4_feature_evaluation"
 ```
 
 ### Features sets synergy
@@ -157,9 +157,9 @@ hammer feature-sets-synergy \
     --base-feature-sets "extended_connectivity" \
     --test-size 0.2 \
     --validation-size 0.2 \
-    --performance-path "feature_sets_synergy_with_extended_connectivity_training.csv" \
-    --training-directory "feature_sets_synergy_with_extended_connectivity_training" \
-    --barplot-directory "feature_sets_synergy_with_extended_connectivity_barplots"
+    --performance-path "performance/synergy/extended_connectivity.csv" \
+    --training-directory "trainings/synergy/extended_connectivity" \
+    --barplot-directory "barplots/synergy/extended_connectivity"
 ```
 
 For the NPC dataset, we have identified that the secondary feature most synergistic (has the best validation AUPRC) with the base feature sets and also the smallest feature size is the `Van Der Waals Surface Area`, as illustrated in the following barplot:
@@ -199,9 +199,6 @@ hammer train \
     --verbose \
     --dataset NPCHarmonized \
     --include-extended-connectivity \
-    --include-layered \
-    --include-molecular-quantum-numbers \
-    --include-autocorrelation \
     --test-size 0.2 \
     --training-directory "npc.harmonized.v1.tar.gz"
 ```

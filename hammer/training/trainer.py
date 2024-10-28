@@ -2,9 +2,9 @@
 
 import os
 import gc
-from typing import Optional, Type
+from typing import Optional
 import pandas as pd
-from keras.api.backend import clear_session
+from keras.api.backend import clear_session # type: ignore
 from dict_hash import sha256, Hashable
 from hammer.datasets import Dataset
 from hammer.model import Hammer
@@ -17,7 +17,7 @@ class Trainer(Hashable):
 
     def __init__(
         self,
-        smiles_dataset: Type[Dataset],
+        dataset: Dataset,
         feature_settings: FeatureSettings,
         augmentation_settings: AugmentationSettings,
         maximal_number_of_epochs: int = 10_000,
@@ -26,20 +26,20 @@ class Trainer(Hashable):
         n_jobs: Optional[int] = None,
     ):
         """Initialize the trainer."""
-        assert isinstance(smiles_dataset, Dataset)
-        self._smiles_dataset = smiles_dataset
+        assert isinstance(dataset, Dataset)
+        self._dataset = dataset
         self._maximal_number_of_epochs = maximal_number_of_epochs
         self._feature_settings = feature_settings
         self._augmentation_settings = augmentation_settings
         self._verbose = verbose
         self._n_jobs = n_jobs
-        self._training_directory: Optional[str] = training_directory
+        self._training_directory = training_directory
 
     def consistent_hash(self, use_approximation: bool = False) -> str:
         """Return consistent hash of the current object."""
         return sha256(
             {
-                "smiles_dataset": self._smiles_dataset,
+                "dataset": self._dataset,
                 "maximal_number_of_epochs": self._maximal_number_of_epochs,
                 "feature_settings": self._feature_settings,
                 "augmentation_settings": self._augmentation_settings,
@@ -51,7 +51,7 @@ class Trainer(Hashable):
     def train(
         self,
         test_size: float,
-    ) -> pd.DataFrame:
+    ) -> dict[str, dict[str, float]]:
         """Train the classifier."""
         try:
             import tensorflow as tf  # pylint: disable=import-outside-toplevel
@@ -69,14 +69,15 @@ class Trainer(Hashable):
             pass
 
         (train_smiles, train_labels), (test_smiles, test_labels) = (
-            self._smiles_dataset.primary_split(
+            self._dataset.primary_split(
                 test_size=test_size,
             )
         )
 
         classifier = Hammer(
-            dag=self._smiles_dataset.layered_dag(),
+            dag=self._dataset.layered_dag(),
             feature_settings=self._feature_settings,
+            scalers={},
             verbose=self._verbose,
             n_jobs=self._n_jobs,
         )
@@ -124,7 +125,7 @@ class Trainer(Hashable):
             pass
 
         (_train_smiles, _train_labels), (test_smiles, test_labels) = (
-            self._smiles_dataset.primary_split(
+            self._dataset.primary_split(
                 test_size=test_size,
             )
         )
@@ -133,7 +134,7 @@ class Trainer(Hashable):
             (sub_train_smiles, sub_train_labels),
             (validation_smiles, validation_labels),
         ) in enumerate(
-            self._smiles_dataset.train_split(
+            self._dataset.train_split(
                 number_of_holdouts=number_of_holdouts,
                 validation_size=validation_size,
                 test_size=test_size,
@@ -154,12 +155,11 @@ class Trainer(Hashable):
 
             path = os.path.join(self._training_directory, holdout_hash)
 
-            if os.path.exists(path):
-                classifier: Hammer = Hammer.load_from_path(path)
-            else:
+            if not os.path.exists(path):
                 classifier = Hammer(
-                    dag=self._smiles_dataset.layered_dag(),
+                    dag=self._dataset.layered_dag(),
                     feature_settings=self._feature_settings,
+                    scalers={},
                     verbose=self._verbose,
                     n_jobs=self._n_jobs,
                 )
@@ -172,6 +172,8 @@ class Trainer(Hashable):
                     maximal_number_of_epochs=self._maximal_number_of_epochs,
                 )
                 classifier.save(path)
+
+            classifier = Hammer.load_from_path(path)
 
             sub_train_performance = classifier.evaluate(
                 sub_train_smiles, sub_train_labels

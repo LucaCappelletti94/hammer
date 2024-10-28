@@ -4,10 +4,10 @@ from typing import Dict, Type, Iterator, List
 from copy import deepcopy
 import compress_json
 from dict_hash import Hashable, sha256
-from hammer.features import (
+from hammer.molecular_features import (
     ExtendedConnectivityFingerprint,
     FeatureInterface,
-    AutocorrelationFingerprint,
+    # AutocorrelationFingerprint,
     FunctionalGroupsFingerprint,
     GhoseCrippenFingerprint,
     LaggnerFingerprint,
@@ -18,20 +18,20 @@ from hammer.features import (
     MolecularQuantumNumbersFingerprint,
     PatternFingerprint,
     PubChemFingerprint,
-    SMILESExtendedConnectivity,
+    # SMILESExtendedConnectivity,
     VanDerWaalsSurfaceAreaFingerprint,
-    AvalonFingerprint,
+    # AvalonFingerprint,
     MACCSFingerprint,
     AtomPairFingerprint,
     TopologicalTorsionFingerprint,
     RDKitFingerprint,
-    MAP4,
+    # MAP4,
 )
 
 FEATURES: List[Type[FeatureInterface]] = [
     ExtendedConnectivityFingerprint,
     LayeredFingerprint,
-    AutocorrelationFingerprint,
+    # AutocorrelationFingerprint,
     AtomPairFingerprint,
     FunctionalGroupsFingerprint,
     GhoseCrippenFingerprint,
@@ -42,13 +42,13 @@ FEATURES: List[Type[FeatureInterface]] = [
     MolecularQuantumNumbersFingerprint,
     PatternFingerprint,
     PubChemFingerprint,
-    SMILESExtendedConnectivity,
+    # SMILESExtendedConnectivity,
     VanDerWaalsSurfaceAreaFingerprint,
-    AvalonFingerprint,
+    # AvalonFingerprint,
     MACCSFingerprint,
     TopologicalTorsionFingerprint,
     RDKitFingerprint,
-    MAP4,
+    # MAP4,
 ]
 
 
@@ -121,13 +121,6 @@ class FeatureSettings(Hashable):
         """Include all features."""
         for key in self._features_included:
             self._features_included[key] = True
-        return self
-
-    def include_all_low_cardinality(self) -> "FeatureSettings":
-        """Include all low cardinality features."""
-        for feature in FEATURES:
-            if feature.low_cardinality():
-                self._features_included[feature.pythonic_name()] = True
         return self
 
     def includes_features(self) -> bool:

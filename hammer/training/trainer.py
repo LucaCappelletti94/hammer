@@ -175,35 +175,25 @@ class Trainer(Hashable):
 
             classifier = Hammer.load_from_path(path)
 
-            sub_train_performance, sub_train_label_wise_performance = classifier.evaluate(
+            sub_train_performance = classifier.evaluate(
                 sub_train_smiles, sub_train_labels
             )
-            valid_performance, valid_label_wise_performance = classifier.evaluate(
+            valid_performance = classifier.evaluate(
                 validation_smiles, validation_labels
             )
-            test_performance, test_label_wise_performance  = classifier.evaluate(test_smiles, test_labels)
-            for performance, label_wise_performance, subset in [
-                (sub_train_performance, sub_train_label_wise_performance, "subtrain"),
-                (valid_performance, valid_label_wise_performance, "validation"),
-                (test_performance, test_label_wise_performance, "test"),
+            test_performance = classifier.evaluate(test_smiles, test_labels)
+            for performance, subset in [
+                (sub_train_performance, "subtrain"),
+                (valid_performance, "validation"),
+                (test_performance, "test"),
             ]:
                 all_performance.append(
                     {
                         **performance,
                         "holdout": holdout_number,
                         "subset": subset,
-                        "label": "Comulative"
                     }
                 )
-                for label, label_performance in label_wise_performance.items():
-                    all_performance.append(
-                        {
-                            **label_performance,
-                            "holdout": holdout_number,
-                            "subset": subset,
-                            "label": label,
-                        }
-                    )
 
             del classifier
             clear_session()

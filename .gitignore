@@ -191,3 +191,5 @@ npc.harmonized.v1
 predictions
 training
 trainings
+labels.csv
+predictions.csv

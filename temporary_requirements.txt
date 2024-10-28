@@ -1,2 +1,0 @@
-scikit-fingerprints @ git+https://github.com/LucaCappelletti94/scikit-fingerprints@tqdm_kwargs
-tqdm @ git+https://github.com/LucaCappelletti94/tqdm@keras_callback

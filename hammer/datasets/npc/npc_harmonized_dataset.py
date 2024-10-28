@@ -7,13 +7,19 @@ from hammer.dags import NPCDAG
 from hammer.datasets.dataset import Dataset
 
 RARE_TERMS: List[str] = [
-    "Cyclogermacrane sesquiterpenoids",
+    "Phenanthrenoids",
+    "Carotenoids (C40, ε-ε)",
     "Carotenoids (C40, Χ-Χ)",
-    "Carotenoids (C45, β-Ψ)",
-    "Carotenoids (C50, β-β)",
-    "Eicosa-1,2-dioxolanes",
-    "RiPPs-Bottromycins"
+    "Phenanthrenes",
+    "Carotenoids (C40, γ-ε)",
+    "Carotenoids (C40, κ-Χ)",
+    "Carotenoids (C40, κ-κ)",
+    "Docosa-1,2-dioxolanes",
+    "Decipiane diterpenoids",
+    "Kempane diterpenoids",
+    "Maresins",
 ]
+
 
 class NPCHarmonizedDataset(Dataset):
     """Class defining the harmonized NPC dataset."""
@@ -54,8 +60,12 @@ class NPCHarmonizedDataset(Dataset):
         """Return an iterator over the labeled SMILES in the NPC dataset."""
         for entry in compress_json.local_load("npc-harmonized.json.xz"):
             skip_sample: bool = False
-            for node_label in entry["pathways"] + entry["superclasses"] + entry["classes"]:
-                if node_label in RARE_TERMS:
+            for label_set in [
+                entry["pathway_labels"],
+                entry["superclass_labels"],
+                entry["class_labels"],
+            ]:
+                if all(node_label in RARE_TERMS for node_label in label_set):
                     skip_sample = True
                     break
             if skip_sample:
@@ -63,16 +73,19 @@ class NPCHarmonizedDataset(Dataset):
 
             labels = np.zeros(self.layered_dag().number_of_nodes(), dtype=np.uint8)
 
-            for node_label in entry["pathways"]:
+            for node_label in entry["pathway_labels"]:
+                if node_label in RARE_TERMS:
+                    continue
                 labels[self.layered_dag().node_id(node_label)] = 1
 
-            for node_label in entry["superclasses"]:
+            for node_label in entry["superclass_labels"]:
+                if node_label in RARE_TERMS:
+                    continue
                 labels[self.layered_dag().node_id(node_label)] = 1
 
-            for node_label in entry["classes"]:
+            for node_label in entry["class_labels"]:
+                if node_label in RARE_TERMS:
+                    continue
                 labels[self.layered_dag().node_id(node_label)] = 1
 
-            yield (
-                entry["smiles"],
-                labels
-            )
+            yield (entry["smiles"], labels)

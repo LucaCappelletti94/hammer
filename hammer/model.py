@@ -12,7 +12,6 @@ from keras.api.layers import (  # type: ignore
     Dropout,
     BatchNormalization,
 )
-from keras.api import ops  # type: ignore
 from keras.api.losses import BinaryFocalCrossentropy  # type: ignore
 from keras.api.utils import plot_model  # type: ignore
 from keras.api.callbacks import (  # type: ignore
@@ -28,7 +27,6 @@ from keras.api.initializers import GlorotNormal  # type: ignore
 from keras.api.saving import (  # type: ignore
     load_model,
 )
-from keras.api.initializers import Constant
 from keras.api import KerasTensor  # type: ignore
 import compress_json
 from downloaders import BaseDownloader
@@ -261,16 +259,15 @@ class Hammer:
             bias_initializer=LogitBiasInitializer.from_labels(train_labels),
         )(hidden)
 
-        for _ in range(2):
-            hidden = HarmonizeGraphConvolution(
-                supports=[
-                    self._dag.symmetric_laplacian(),
-                    self._dag.laplacian(),
-                    self._dag.transposed_laplacian(),
-                ],
-                activation="linear",
-                learn_support=True,
-            )(hidden)
+        hidden = HarmonizeGraphConvolution(
+            supports=[
+                self._dag.symmetric_laplacian(),
+                self._dag.laplacian(),
+                self._dag.transposed_laplacian(),
+            ],
+            activation="linear",
+            learn_support=True,
+        )(hidden)
 
         self._model = Model(
             inputs=input_layers,
@@ -282,7 +279,6 @@ class Hammer:
             optimizer=Adam(),
             loss=BinaryFocalCrossentropy(
                 apply_class_balancing=True,
-                label_smoothing=0.01,
             ),
             metrics=get_minimal_multiclass_metrics(),
             jit_compile=False,
@@ -423,9 +419,7 @@ class Hammer:
         """Return a copy of the classifier model."""
         return deepcopy(self)
 
-    def evaluate(
-        self, smiles: List[str], labels: np.ndarray
-    ) -> Tuple[Dict[str, float], Dict[str, Dict[str, float]]]:
+    def evaluate(self, smiles: List[str], labels: np.ndarray) -> Dict[str, float]:
         """Evaluate the classifier model."""
         assert self._model is not None, "Model not trained yet."
 
@@ -440,28 +434,11 @@ class Hammer:
                     feature_class.pythonic_name()
                 ].transform(features[feature_class.pythonic_name()])
 
-        predictions = self._model.predict(features, verbose=0)
-
-        pd.DataFrame(predictions, columns=self._dag.nodes(), index=smiles).to_csv("predictions.csv")
-        pd.DataFrame(labels, columns=self._dag.nodes(), index=smiles).to_csv("labels.csv")
-
-        label_wise_evaluations: Dict[str, Dict[str, float]] = {}
-
-        for node_label, predictions_column, ground_truth_column in zip(
-            self._dag.nodes(), predictions.T, labels.T
-        ):
-            label_wise_evaluations[node_label] = {}
-            for metric in get_complete_binary_metrics():
-                metric.update_state(ground_truth_column, predictions_column)
-                label_wise_evaluations[node_label][
-                    metric.name
-                ] = metric.result().numpy()
-
         evaluations = self._model.evaluate(
             features, labels, verbose=0, return_dict=True
         )
 
-        return evaluations, label_wise_evaluations
+        return evaluations
 
     def predict_proba(
         self, smiles: Union[str, List[str]], canonicalize: bool = True

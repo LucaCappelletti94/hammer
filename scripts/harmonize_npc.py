@@ -61,7 +61,7 @@ def harmonize_npc() -> None:
             harmonization_tecniques_counts["scraped_is_empty"] += 1
             continue
 
-        if np.all(scraped_entry == original_entry):
+        if np.sum((scraped_entry + original_entry) == 2) == np.sum(original_entry):
             harmonized[smiles] = scraped_entry
             harmonization_tecniques_counts["no_divergence"] += 1
             continue

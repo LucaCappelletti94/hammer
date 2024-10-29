@@ -63,16 +63,13 @@ class Dataset(Hashable):
 
     def all_samples(self) -> Tuple[List[Any], np.ndarray]:
         """Return all the smiles and labels."""
-        number_of_samples = self.number_of_samples()
-        dag: LayeredDAG = self.layered_dag()
-        all_labels: np.ndarray = np.zeros(
-            (number_of_samples, dag.number_of_nodes()), dtype=np.uint8
-        )
+        all_labels: List[np.ndarray] = []
         samples: List[Any] = []
-        for i, (sample, labels) in enumerate(self.iter_samples()):
+        for (sample, labels) in self.iter_samples():
             samples.append(sample)
-            all_labels[i] = labels
-        return samples, all_labels
+            all_labels.append(labels)
+        
+        return samples, np.vstack(all_labels)
 
     def primary_split(
         self, test_size: float

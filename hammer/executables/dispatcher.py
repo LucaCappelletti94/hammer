@@ -18,12 +18,19 @@ from hammer.executables.dag_coverage import add_dag_coverage_subcommand
 from hammer.executables.feature_sets_synergy import add_feature_sets_synergy_subcommand
 from hammer.executables.train import add_train_subcommand
 from hammer.executables.predict import add_predict_subcommand
+from hammer.executables.holdouts_evaluation import add_holdouts_evaluation_subcommand
 
 
 def dispatcher() -> None:
     """Dispatch the command to the appropriate sub-command."""
     parser: ArgumentParser = ArgumentParser()
     subparsers = parser.add_subparsers()
+    add_holdouts_evaluation_subcommand(
+        subparsers.add_parser(
+            "holdouts",
+            help="Evaluate the model with the selected feature set.",
+        )
+    )
     add_feature_sets_evaluation_subcommand(
         subparsers.add_parser(
             "feature-sets-evaluation",

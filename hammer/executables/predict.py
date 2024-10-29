@@ -1,11 +1,12 @@
 """Script to run model predictions."""
 
 from argparse import Namespace, ArgumentParser
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List
 import os
 import pandas as pd
 from tqdm.auto import tqdm
 from anytree import Node, RenderTree
+from matchms.importing import load_from_mgf
 from hammer import Hammer
 from hammer.dags import LayeredDAG
 from hammer.utils import is_valid_smiles
@@ -41,7 +42,7 @@ def print_predictions(smiles: str, dag: LayeredDAG, predictions: Dict[str, pd.Se
     to generate the tree.
     """
     print(f"{BOLD}{CYAN}SMILES:{RESET} {smiles}")
-    nodes: Dict[Tuple[Optional[str], str], Node] = {}
+    nodes: Dict[str, Node] = {}
     last_layer_name: Optional[str] = None
     for i, layer_name in enumerate(dag.layer_names()):
         layer_color: str = COLORS[i % len(COLORS)]
@@ -65,25 +66,25 @@ def print_predictions(smiles: str, dag: LayeredDAG, predictions: Dict[str, pd.Se
         # up until the total prediction score for this layer is higher than
         # 1.25 (so to have so extra margin for the predictions).
         layer_predictions = layer_predictions[
-            (layer_predictions > 0.5) | (layer_predictions.cumsum() < 1.25)
+            (layer_predictions > 0.5) | (layer_predictions.cumsum() < 1.0)
         ]
 
         for label_name, score in layer_predictions.items():
             if last_layer_name is None:
-                nodes[(layer_name, label_name)] = Node(
+                nodes[label_name] = Node(
                     f"{layer_color}{label_name} ({score:.4f}){RESET}"
                 )
                 continue
-            for parent_node in dag.get_parents(label_name, layer_name):
-                if (last_layer_name, parent_node) in nodes:
-                    nodes[(layer_name, label_name)] = Node(
+            for parent_node in dag.outbounds(label_name):
+                if parent_node in nodes:
+                    nodes[label_name] = Node(
                         f"{layer_color}{label_name} ({score:.4f}){RESET}",
-                        parent=nodes.get((last_layer_name, parent_node)),
+                        parent=nodes.get(parent_node),
                     )
         last_layer_name = layer_name
 
-    for root_node in dag.iter_root_nodes():
-        maybe_root_node: Optional[Node] = nodes.get((dag.root_layer_name, root_node))
+    for root_node in dag.iter_sink_nodes():
+        maybe_root_node: Optional[Node] = nodes.get(root_node)
         if maybe_root_node is None:
             continue
         for pre, _fill, node in RenderTree(maybe_root_node):
@@ -93,10 +94,13 @@ def print_predictions(smiles: str, dag: LayeredDAG, predictions: Dict[str, pd.Se
 def predict(args: Namespace):
     """Run model predictions."""
 
+    if args.version is None and args.model_path is None:
+        raise ValueError("Either a version or a model path must be provided.")
+
     # First, we normalize the input.
     if is_valid_smiles(args.input):
         # If the input is a Single SMILES string
-        smiles = [args.input]
+        samples = [args.input]
     elif os.path.isfile(args.input):
         # Otherwise, we check whether the input is a file,
         # and whether it is a CSV, TSV or SSV file.
@@ -104,6 +108,7 @@ def predict(args: Namespace):
             ".csv": ",",
             ".tsv": "\t",
             ".ssv": " ",
+            ".mgf": " ",
         }
         valid_compressions = [".gz", ".xz"]
         complete_valid_extensions_separators = {
@@ -111,44 +116,67 @@ def predict(args: Namespace):
             for extension, separator in valid_extensions.items()
             for compression in valid_compressions + [""]
         }
+        extension: Optional[str] = None
         separator: Optional[str] = None
-        for extension, sep in complete_valid_extensions_separators.items():
-            if args.input.endswith(extension):
+        for ext, sep in complete_valid_extensions_separators.items():
+            if args.input.endswith(ext):
                 separator = sep
+                extension = ext
                 break
         if separator is None:
             raise ValueError(
                 f"Invalid file extension '{args.input}'. Valid extensions are: {valid_extensions}"
             )
 
-        df = pd.read_csv(args.input, sep=separator, engine="python")
+        if extension == ".mgf":
+            # We load the MGF file.
+            samples = []
 
-        # We scrape the SMILES strings from the file.
-        smiles: List[str] = list(
-            {
-                value
-                for row in tqdm(
-                    df.values,
-                    desc="Scraping SMILES",
-                    leave=False,
-                    dynamic_ncols=True,
-                    disable=not args.verbose,
-                )
-                for value in row
-                if isinstance(value, str) and is_valid_smiles(value)
-            }
-        )
+            for spectrum in tqdm(
+                load_from_mgf(args.input),
+                desc="Loading Spectra",
+                leave=False,
+                dynamic_ncols=True,
+                disable=not args.verbose,
+            ):
+                if args.only_smiles:
+                    if "smiles" in spectrum.metadata:
+                        samples.append(spectrum.metadata["smiles"])
+                else:
+                    samples.append(spectrum)
+        else:
+            df = pd.read_csv(args.input, sep=separator, engine="python")
+
+            # We scrape the SMILES strings from the file.
+            samples = list(
+                {
+                    value
+                    for row in tqdm(
+                        df.values,
+                        desc="Scraping SMILES",
+                        leave=False,
+                        dynamic_ncols=True,
+                        disable=not args.verbose,
+                    )
+                    for value in row
+                    if isinstance(value, str) and is_valid_smiles(value)
+                }
+            )
     else:
         raise ValueError(
             f"Invalid input '{args.input}'. The input must be a SMILES string or a path to a file."
         )
 
-    model = Hammer.load(args.version)
+    if args.version:
+        model = Hammer.load(args.version)
+    elif args.model_path:
+        model = Hammer.load_from_path(args.model_path)
+    else:
+        raise NotImplementedError("This should not happen.")
 
     model._verbose = args.verbose
     predictions: Dict[str, pd.DataFrame] = model.predict_proba(
-        smiles,
-        canonicalize=args.canonicalize,
+        samples,
     )
 
     if args.output_dir is not None:
@@ -159,12 +187,12 @@ def predict(args: Namespace):
                 index=True,
             )
     else:
-        for smile in smiles:
+        for sample_identifier in predictions[list(predictions.keys())[0]].index:
             print_predictions(
-                smile,
+                sample_identifier,
                 model.layered_dag,
                 {
-                    layer_name: prediction.loc[smile]
+                    layer_name: prediction.loc[sample_identifier]
                     for layer_name, prediction in predictions.items()
                 },
             )

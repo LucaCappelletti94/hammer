@@ -41,7 +41,6 @@ def feature_sets_evaluation(args: Namespace):
         feature_performance: pd.DataFrame = holdouts_evaluation(
             args,
             feature_settings=FeatureSettings.from_feature_class(feature_class),
-            training_directory=args.training_directory,
             performance_path=None,
         )
 

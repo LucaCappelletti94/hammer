@@ -1,19 +1,20 @@
 """Executable to visualize the features of the dataset."""
 
 import os
-from collections import Counter
-from typing import Type, List, Dict
+from typing import List, Dict, Union, Optional, Tuple
 from argparse import Namespace, ArgumentParser
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 from rdkit.Chem.rdchem import Mol
+from matchms import Spectrum
 from sklearn.decomposition import PCA  # type: ignore
 from sklearn.preprocessing import RobustScaler  # type: ignore
 
 from matplotlib.colors import TABLEAU_COLORS as TABLEAU_COLORS_DICT
+from hammer.scalers import RobustSpectraScaler
 from hammer.datasets import Dataset
-from hammer.dags import DAG
+from hammer.dags import LayeredDAG
 from hammer.molecular_features import FeatureInterface
 from hammer.feature_settings import FeatureSettings
 from hammer.augmentation_settings import AugmentationSettings
@@ -29,37 +30,40 @@ from hammer.executables.argument_parser_utilities import (
 from hammer.utils import smiles_to_molecules, into_canonical_smiles
 
 
-TABLEAU_COLORS: List[str] = list(TABLEAU_COLORS_DICT.values())
+TABLEAU_COLORS: List[str] = list(TABLEAU_COLORS_DICT.keys())
 
 
 def _visualize_feature(
-    molecules: List[Mol],
-    labels: Dict[str, np.ndarray],
+    molecules: Union[List[Mol], List[Spectrum]],
     most_common: Dict[str, np.ndarray],
     top: Dict[str, List[str]],
-    feature: FeatureInterface,
+    feature: Optional[FeatureInterface],
     arguments: Namespace,
-):
+) -> None:
     """Visualize a feature."""
     assert isinstance(molecules, list)
-    assert isinstance(labels, dict)
     assert isinstance(most_common, dict)
     assert isinstance(top, dict)
-    assert issubclass(feature.__class__, FeatureInterface)
     assert isinstance(arguments, Namespace)
 
-    x: np.ndarray = feature.transform_molecules(molecules)
-
-    if not feature.__class__.is_binary():
-        x = RobustScaler().fit_transform(x)
+    if feature is not None:
+        assert isinstance(feature, FeatureInterface)
+        assert isinstance(molecules[0], Mol)
+        x: np.ndarray = feature.transform_molecules(molecules)
+        if not feature.__class__.is_binary():
+            x = RobustScaler().fit_transform(x)
+    else:
+        assert isinstance(molecules[0], Spectrum)
+        x = RobustSpectraScaler().fit_transform(molecules)
+        x = x.reshape((len(x), -1))
 
     if np.isnan(x).any():
         return
 
     try:
-        from MulticoreTSNE import (
+        from MulticoreTSNE import (  # pylint: disable=import-outside-toplevel
             MulticoreTSNE,
-        )  # pylint: disable=import-outside-toplevel
+        )
 
         tsne = MulticoreTSNE(
             n_components=2,
@@ -84,7 +88,7 @@ def _visualize_feature(
         # First, we reduce the dimensionality of the features to 50
         x_reduced: np.ndarray = pca.fit_transform(x)
     else:
-        x_reduced: np.ndarray = x
+        x_reduced = x
 
     # We compute the 2d version using PCA
     x_pca: np.ndarray = PCA(n_components=2).fit_transform(x)
@@ -93,6 +97,11 @@ def _visualize_feature(
     x_tsne: np.ndarray = tsne.fit_transform(x_reduced)
 
     fig, ax = plt.subplots(ncols=3, nrows=2, figsize=(21, 14), dpi=200)
+
+    if feature is not None:
+        name = feature.name()
+    else:
+        name = "Spectral binning"
 
     for i, (decomposition, decomposition_name) in enumerate(
         [(x_pca, "PCA"), (x_tsne, "t-SNE")]
@@ -106,7 +115,8 @@ def _visualize_feature(
                 marker=".",
                 alpha=0.5,
             )
-            ax[i, j].set_title(f"{feature.name()} - {label_name.capitalize()}")
+
+            ax[i, j].set_title(f"{name} - {label_name.capitalize()}")
             ax[i, j].set_xlabel(f"{decomposition_name} 1")
             if j == 0:
                 ax[i, j].set_ylabel(f"{decomposition_name} 2")
@@ -132,9 +142,7 @@ def _visualize_feature(
 
     os.makedirs(arguments.output_directory, exist_ok=True)
     fig.savefig(
-        os.path.join(
-            arguments.output_directory, f"{feature.name()}.{arguments.image_format}"
-        )
+        os.path.join(arguments.output_directory, f"{name}.{arguments.image_format}")
     )
     plt.close()
 
@@ -169,37 +177,31 @@ def add_visualize_features_subcommand(visualize_features_parser: ArgumentParser)
     visualize_features_parser.set_defaults(func=visualize)
 
 
-def visualize(arguments: Namespace):
+def visualize(arguments: Namespace) -> None:
     """Train the model."""
 
-    dataset: Type[Dataset] = build_dataset_from_namespace(namespace=arguments)
-    dag: Type[DAG] = dataset.layered_dag()
-    smiles, labels = dataset.all_smiles()
+    dataset: Dataset = build_dataset_from_namespace(namespace=arguments)
+    dag: LayeredDAG = dataset.layered_dag()
+    samples, labels = dataset.all_samples()
 
     # We construct the augmentation strategies from the argument parser.
     augmentation_settings: AugmentationSettings = (
         build_augmentation_settings_from_namespace(arguments)
     )
 
-    smiles, labels = augmentation_settings.augment(smiles, labels)
+    samples, labels = augmentation_settings.augment(samples, labels)
 
     # We construct the feature settings from the argument parser.
     feature_settings: FeatureSettings = build_features_settings_from_namespace(
         arguments
     )
 
-    if not feature_settings.includes_features():
+    if not feature_settings.includes_features() and not isinstance(
+        samples[0], Spectrum
+    ):
         feature_settings = FeatureSettings().include_all()
 
-    counters: Dict[str, Counter] = {}
-
-    for label_name, label_values in labels.items():
-        counters[label_name] = Counter()
-        layer: List[str] = dag.get_layer(label_name)
-        for smile_labels in label_values:
-            for i, smile_label in enumerate(smile_labels):
-                if smile_label == 1:
-                    counters[label_name].update([layer[i]])
+    counter: np.ndarray = dataset.label_counts()
 
     # Since we can't possibly show all of the superclasses and classes,
     # we will only show the top 'number of colors' of each. Some samples will have multiple
@@ -209,28 +211,45 @@ def visualize(arguments: Namespace):
     # We determine the top 'number_of_colors - 1' most common labels
 
     top_labels: Dict[str, List[str]] = {}
-    for layer_name in dag.get_layer_names():
-        top_labels[layer_name] = sorted(
-            counters[layer_name], key=lambda x: counters[layer_name][x], reverse=True
-        )[: number_of_colors - 1]
+    for layer_name in dag.layer_names():
+        counts: List[Tuple[str, int]] = [
+            (node_label, counter[dag.node_id(node_label)])
+            for node_label in dag.nodes_in_layer(layer_name)
+        ]
+        sorted_counts = sorted(counts, key=lambda x: x[1], reverse=True)
+        clipped_sorted_counts = sorted_counts[: number_of_colors - 1]
+        top_labels[layer_name] = [label for label, _ in sorted_counts]
 
-    # Plus one for "Other"
-    for layer_name in dag.get_layer_names():
-        if len(counters[layer_name]) > number_of_colors - 1:
+        if len(clipped_sorted_counts) < len(sorted_counts):
             top_labels[layer_name].append("Other")
 
-    most_common_labels: Dict[str, List[str]] = {
-        layer_name: [] for layer_name in dag.get_layer_names()
+    most_common_labels: Dict[str, List[int]] = {
+        layer_name: [] for layer_name in dag.layer_names()
     }
-    for layer_name in dag.get_layer_names():
-        for one_hot_encoded_y in labels[layer_name]:
+    for one_hot_encoded_y in labels:
+        for layer_name in dag.layer_names():
             most_common_label = None
+            one_label_in_layer = False
             most_common_count = 0
-            for bit, label_name in zip(one_hot_encoded_y, dag.get_layer(layer_name)):
-                if bit == 1 and counters[layer_name][label_name] > most_common_count:
+            for label_name in dag.nodes_in_layer(layer_name):
+                label_index = dag.node_id(label_name)
+                if one_hot_encoded_y[label_index] == 1:
+                    one_label_in_layer = True
+                    assert counter[label_index] > 0, (
+                        f"We expect the count of label {label_name} to be greater than 0, "
+                        f"but it is {counter[label_index]}."
+                    )
+                if (
+                    one_hot_encoded_y[label_index] == 1
+                    and counter[label_index] > most_common_count
+                ):
                     most_common_label = label_name
-                    most_common_count = counters[layer_name][label_name]
+                    most_common_count = counter[label_index]
 
+            assert one_label_in_layer, (
+                f"We expect at least one label in layer {layer_name} to be 1, "
+                f"but none were found."
+            )
             assert most_common_label is not None
 
             try:
@@ -240,33 +259,41 @@ def visualize(arguments: Namespace):
             most_common_labels[layer_name].append(most_common_index)
 
     # We convert the most common labels to numpy arrays
-    most_common_labels = {
+    most_common_labels_array: Dict[str, np.ndarray] = {
         key: np.array(value) for key, value in most_common_labels.items()
     }
 
-    canonical_smiles: List[str] = into_canonical_smiles(
-        smiles, n_jobs=arguments.n_jobs, verbose=arguments.verbose
-    )
-    molecules: List[Mol] = smiles_to_molecules(
-        canonical_smiles, verbose=arguments.verbose, n_jobs=arguments.n_jobs
-    )
-
-    for feature_class in tqdm(
-        feature_settings.iter_features(),
-        desc="Visualizing features",
-        total=feature_settings.number_of_features(),
-        disable=not arguments.verbose,
-        leave=False,
-        dynamic_ncols=True,
-    ):
+    if isinstance(samples[0], Spectrum):
         _visualize_feature(
-            molecules,
-            labels,
-            most_common_labels,
+            samples,
+            most_common_labels_array,
             top_labels,
-            feature_class(
-                verbose=arguments.verbose,
-                n_jobs=arguments.n_jobs,
-            ),
-            arguments,
+            feature=None,
+            arguments=arguments,
         )
+    else:
+        assert isinstance(samples[0], str)
+        canonical_samples: List[str] = into_canonical_smiles(
+            samples, n_jobs=arguments.n_jobs, verbose=arguments.verbose
+        )
+        molecules: List[Mol] = smiles_to_molecules(
+            canonical_samples, verbose=arguments.verbose, n_jobs=arguments.n_jobs
+        )
+        for feature_class in tqdm(
+            feature_settings.iter_features(),
+            desc="Visualizing features",
+            total=feature_settings.number_of_features(),
+            disable=not arguments.verbose,
+            leave=False,
+            dynamic_ncols=True,
+        ):
+            _visualize_feature(
+                molecules,
+                most_common_labels_array,
+                top_labels,
+                feature_class(
+                    verbose=arguments.verbose,
+                    n_jobs=arguments.n_jobs,
+                ),
+                arguments,
+            )

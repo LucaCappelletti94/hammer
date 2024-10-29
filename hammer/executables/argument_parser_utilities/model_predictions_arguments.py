@@ -26,10 +26,10 @@ def add_model_predictions_arguments(parser: ArgumentParser) -> ArgumentParser:
     )
 
     parser.add_argument(
-        "--canonicalize",
-        action="store_true",
-        default=False,
-        help="Canonicalize the SMILES strings.",
+        "--model-path",
+        type=str,
+        required=False,
+        help="Path to the model to use for the predictions.",
     )
 
     parser.add_argument(
@@ -37,6 +37,12 @@ def add_model_predictions_arguments(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         required=False,
         help="Path to store the predictions.",
+    )
+
+    parser.add_argument(
+        "--only-smiles",
+        action="store_true",
+        help="Whether to only search for SMILES in the input file.",
     )
 
     parser.add_argument(

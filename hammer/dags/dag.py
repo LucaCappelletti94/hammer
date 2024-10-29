@@ -31,6 +31,12 @@ class DAG(Graph):
             and self.get_node_out_degree(node_name) > 0
         )
 
+    def iter_sink_nodes(self) -> Iterable[str]:
+        """Return an iterator over the sink nodes."""
+        for node in self.nodes():
+            if self.is_sink_node(node):
+                yield node
+
     def iter_source_nodes(self) -> Iterable[str]:
         """Return an iterator over the source nodes."""
         for node in self.nodes():

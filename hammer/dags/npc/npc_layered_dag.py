@@ -9,7 +9,7 @@ from hammer.exceptions import UnknownDAGLayer, UnknownDAGNode
 class NPCDAG(LayeredDAG):
     """Class defining the Layered DAG for the NP Classifier (adjusted)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the Layered DAG for the NP Classifier (adjusted)."""
         self._dag: Dict[str, Dict[str, List[str]]] = compress_json.local_load(  # type: ignore
             "npc_layered_dag.json"
@@ -17,6 +17,13 @@ class NPCDAG(LayeredDAG):
         self._pathway_names = compress_json.local_load("npc_pathway_names.json")
         self._superclass_names = compress_json.local_load("npc_superclass_names.json")
         self._class_names = compress_json.local_load("npc_class_names.json")
+        self._nodes: List[str] = (
+            self._pathway_names + self._superclass_names + self._class_names
+        )
+
+    def nodes(self) -> List[str]:
+        """Return the nodes in the DAG."""
+        return self._nodes
 
     def layer_names(self) -> List[str]:
         """Return the names of the layers in the DAG."""

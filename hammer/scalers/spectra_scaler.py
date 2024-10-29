@@ -1,10 +1,10 @@
 """Submodule providing a scikit-learn-like Scaler for matchms Spectrum objects."""
 
-from typing import List, Tuple
+from typing import List, Optional
+from multiprocessing import cpu_count, Pool
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import RobustScaler
 from matchms import Spectrum
-from matchms.filtering import normalize_intensities, default_filters
 from tqdm.auto import tqdm
 import numpy as np
 import numpy.typing as npt
@@ -14,7 +14,11 @@ class RobustSpectraScaler(BaseEstimator, TransformerMixin):
     """Scaler for matchms Spectrum objects robust to outlier peaks."""
 
     def __init__(
-        self, bins: int = 1000, verbose: bool = True, dtype: npt.DTypeLike = np.float32
+        self,
+        bins: int = 1000,
+        verbose: bool = True,
+        dtype: npt.DTypeLike = np.float32,
+        n_jobs: Optional[int] = 1,
     ):
         """Initialize the scaler.
 
@@ -28,9 +32,13 @@ class RobustSpectraScaler(BaseEstimator, TransformerMixin):
             Data type to use for the transformed data.
         """
         self.bins: int = bins
+        self.bin_ends: np.ndarray = np.empty(self.bins, dtype=dtype)
         self.dtype: npt.DTypeLike = dtype
         self.verbose: bool = verbose
         self.scaler = RobustScaler()
+        if n_jobs is None:
+            n_jobs = cpu_count()
+        self._n_jobs: int = n_jobs
 
     # pylint: disable=unused-argument, invalid-name
     def fit(self, X: List[Spectrum], y=None):
@@ -55,16 +63,69 @@ class RobustSpectraScaler(BaseEstimator, TransformerMixin):
             leave=False,
             dynamic_ncols=True,
         ):
-            spectrum = normalize_intensities(default_filters(spectrum))
             mz_values.extend(spectrum.peaks.mz)
 
         # We fit the RobustScaler on the m/z values.
-        self.scaler.fit(np.array(mz_values).reshape(-1, 1))
+        normalized_mz_values = self.scaler.fit_transform(
+            np.array(mz_values).reshape(-1, 1)
+        ).flatten()
+
+        # We sort the normalized m/z values to find the bin boundaries.
+        sorted_normalized_mz_values = np.sort(normalized_mz_values)
+        sorted_normalized_mz_values[sorted_normalized_mz_values < 0] = 0
+        sorted_normalized_mz_values[sorted_normalized_mz_values > 1] = 1
+
+        # We split the bins into chunks of equal size.
+        for i in range(self.bins - 1):
+            self.bin_ends[i] = sorted_normalized_mz_values[
+                int((i + 1) * len(sorted_normalized_mz_values) / self.bins)
+            ]
+
+    def _transform_spectrum(self, spectrum: Spectrum) -> np.ndarray:
+        """Transform the provided spectrum.
+
+        Parameters
+        ----------
+        spectrum
+            The spectrum to transform.
+
+        Returns
+        -------
+        np.ndarray
+            The transformed spectrum.
+        """
+        # We allocate the two arrays to store the binned and averaged
+        # m/z values and the bin averaged intensities.
+        binned = np.zeros((self.bins, 3), dtype=self.dtype)
+
+        # We iterate the mz and intensity values of the spectrum
+        # and bin them according to the fitted RobustScaler.
+        normalized_mzs = self.scaler.transform(spectrum.peaks.mz.reshape(-1, 1))
+
+        for normalized_mz, intensity in zip(normalized_mzs, spectrum.peaks.intensities):
+            clipped_normalized_mz = np.clip(normalized_mz, 0, 1)
+
+            bin_index = np.searchsorted(self.bin_ends, clipped_normalized_mz) - 1
+
+            binned[bin_index, 0] += normalized_mz
+            binned[bin_index, 1] += intensity
+            binned[bin_index, 2] += 1
+
+        # We normalize the values in the bins by the counts
+        # in the bins, ignoring empty bins.
+        for j in range(self.bins):
+            if binned[j, 2] == 0:
+                continue
+            binned[j, 0] /= binned[j, 2]
+            binned[j, 1] /= binned[j, 2]
+
+        # Next we normalize the intensities in the bins.
+        binned[:, 2] /= np.max(binned[:, 2])
+
+        return binned
 
     # pylint: disable=unused-argument, invalid-name
-    def transform(
-        self, X: List[Spectrum], y=None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def transform(self, X: List[Spectrum], y=None) -> np.ndarray:
         """Transform the provided data.
 
         Parameters
@@ -76,65 +137,32 @@ class RobustSpectraScaler(BaseEstimator, TransformerMixin):
 
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray, np.ndarray]
-            The transformed data, including the binned and averaged
-            m/z values and the bin averaged intensities, which are
-            also normalized using matchms default filters and normalizers.
-            The third array contains the normalized populations of the bins.
+        np.ndarray
+            The transformed data.
         """
 
         # We allocate the two arrays to store the binned and averaged
         # m/z values and the bin averaged intensities.
-        binned_mz = np.zeros((len(X), self.bins), dtype=self.dtype)
-        binned_intensity = np.zeros((len(X), self.bins), dtype=self.dtype)
-        normalized_populations = np.zeros((len(X), self.bins), dtype=self.dtype)
+        binned = np.zeros((len(X), self.bins, 3), dtype=self.dtype)
 
-        for i, spectrum in enumerate(
-            tqdm(
-                X,
-                desc="Transforming spectra",
-                unit="spectrum",
-                leave=False,
-                dynamic_ncols=True,
-                disable=not self.verbose,
-            )
-        ):
-            spectrum = normalize_intensities(default_filters(spectrum))
-
-            # We iterate the mz and intensity values of the spectrum
-            # and bin them according to the fitted RobustScaler.
-            normalized_mzs = self.scaler.transform(spectrum.peaks.mz.reshape(-1, 1))
-            for mz, normalized_mz, intensity in zip(
-                spectrum.peaks.mz, normalized_mzs, spectrum.peaks.intensities
+        with Pool(self._n_jobs) as pool:
+            for i, transformed_spectrum in enumerate(
+                tqdm(
+                    pool.imap(self._transform_spectrum, X),
+                    desc="Transforming spectra",
+                    unit="spectrum",
+                    total=len(X),
+                    disable=not self.verbose,
+                    leave=False,
+                    dynamic_ncols=True,
+                )
             ):
-                bin_index: int = int(np.floor(normalized_mz * self.bins))
+                binned[i] = transformed_spectrum
 
-                if bin_index < 0:
-                    bin_index = 0
-                if bin_index >= self.bins:
-                    bin_index = self.bins - 1
-
-                binned_mz[i, bin_index] += mz
-                binned_intensity[i, bin_index] += intensity
-                normalized_populations[i, bin_index] += 1
-
-            # We normalize the values in the bins by the counts
-            # in the bins, ignoring empty bins.
-            for j in range(self.bins):
-                if normalized_populations[i, j] == 0:
-                    continue
-                binned_mz[i, j] /= normalized_populations[i, j]
-                binned_intensity[i, j] /= normalized_populations[i, j]
-
-            # Next we normalize the intensities in the bins.
-            normalized_populations[i] /= np.max(normalized_populations[i])
-
-        return binned_mz, binned_intensity, normalized_populations
+        return binned
 
     # pylint: disable=unused-argument
-    def fit_transform(
-        self, X: List[Spectrum], y=None, **fit_params
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def fit_transform(self, X: List[Spectrum], y=None, **fit_params) -> np.ndarray:
         """Fit the scaler on the provided data and transform it.
 
         Parameters
@@ -144,11 +172,8 @@ class RobustSpectraScaler(BaseEstimator, TransformerMixin):
 
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray, np.ndarray]
-            The transformed data, including the binned and averaged
-            m/z values and the bin averaged intensities, which are
-            also normalized using matchms default filters and normalizers.
-            The third array contains the normalized populations of the bins.
+        np.ndarray
+            The transformed data.
         """
         self.fit(X)
         return self.transform(X)

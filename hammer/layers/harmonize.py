@@ -1,10 +1,10 @@
 """Submodule providing an harmonization layer for neural networks."""
 
 from typing import Tuple
-from keras import ops # type: ignore
+from keras import ops  # type: ignore
 from keras import KerasTensor
-from keras.api.layers import Layer # type: ignore
-from keras.api.utils import register_keras_serializable # type: ignore
+from keras.api.layers import Layer  # type: ignore
+from keras.api.utils import register_keras_serializable  # type: ignore
 import numpy as np
 
 

@@ -194,3 +194,8 @@ trainings
 labels.csv
 predictions.csv
 checkpoints
+*.mgf
+*.mgf.gz
+*.pkl
+matchms_predictions
+npc.harmonized.v2

@@ -56,7 +56,4 @@ class NPCScrapedDataset(Dataset):
             for node_label in entry["class_results"]:
                 labels[self.layered_dag().node_id(node_label)] = 1
 
-            yield (
-                entry["smiles"],
-                labels
-            )
+            yield (entry["smiles"], labels)

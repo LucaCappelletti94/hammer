@@ -1,15 +1,19 @@
 """Module containing the hierarchical multi-modal multi-class classifier model."""
 
-from typing import Dict, Optional, Any, List, Union, Tuple
+from typing import Dict, Optional, Any, List, Union
 import os
 import shutil
 from copy import deepcopy
+import warnings
 from keras import Model  # type: ignore
 from keras.api.layers import (  # type: ignore
     Concatenate,
     Input,
     Dense,
     Dropout,
+    Conv1D,
+    Flatten,
+    MaxPool1D,
     BatchNormalization,
 )
 from keras.api.losses import BinaryFocalCrossentropy  # type: ignore
@@ -23,7 +27,7 @@ from keras.api.callbacks import (  # type: ignore
 from keras.api.optimizers import (  # type: ignore
     Adam,
 )
-from keras.api.initializers import GlorotNormal  # type: ignore
+from keras.api.initializers import GlorotNormal, HeNormal  # type: ignore
 from keras.api.saving import (  # type: ignore
     load_model,
 )
@@ -47,6 +51,7 @@ from hammer.utils import into_canonical_smiles, smiles_to_molecules
 from hammer.dags import LayeredDAG
 from hammer.initializers import LogitBiasInitializer
 from hammer.layers import HarmonizeGraphConvolution
+from hammer.scalers import SpectraScaler
 
 
 class Hammer:
@@ -57,6 +62,7 @@ class Hammer:
         dag: LayeredDAG,
         feature_settings: FeatureSettings,
         scalers: Dict[str, RobustScaler],
+        spectral_scaler: Optional[SpectraScaler] = None,
         metadata: Optional[Dict[str, Any]] = None,
         model_path: Optional[str] = None,
         verbose: bool = False,
@@ -74,6 +80,8 @@ class Hammer:
             Feature settings used to compute the features.
         scalers : Optional[Dict[str, RobustScaler]]
             Dictionary of scalers used to scale the features.
+        spectral_scaler : Optional[SpectraScaler]
+            Scaler used to scale the spectral data.
         metadata : Optional[Dict[str, Any]]
             Metadata of the classifier model.
             Used to store additional information about the classifier.
@@ -93,6 +101,7 @@ class Hammer:
             self._model = None
 
         self._scalers: Dict[str, RobustScaler] = scalers
+        self._spectral_scaler: Optional[SpectraScaler] = spectral_scaler
         self._dag: LayeredDAG = dag
         self._feature_settings: FeatureSettings = feature_settings
         self._verbose: bool = verbose
@@ -116,12 +125,18 @@ class Hammer:
 
         dag_path = f"{path}/dag.pkl"
         scalers_path = f"{path}/scalers.pkl"
+        spectral_scaler_path = f"{path}/spectral_scaler.pkl"
         model_path = f"{path}/model.keras"
         feature_settings_path = f"{path}/feature_settings.json"
 
         classifier = Hammer(
             dag=compress_pickle.load(dag_path),
             scalers=compress_pickle.load(scalers_path),
+            spectral_scaler=(
+                compress_pickle.load(spectral_scaler_path)
+                if os.path.exists(spectral_scaler_path)
+                else None
+            ),
             feature_settings=FeatureSettings.from_json(feature_settings_path),
             model_path=model_path,
         )
@@ -151,27 +166,42 @@ class Hammer:
 
         return Hammer.load_from_path(os.path.join("downloads", version, version))
 
-    def _build_input_modality(self, input_layer: Input) -> KerasTensor:
+    def _build_input_modality(
+        self, input_layer: Input, convolutional: bool
+    ) -> KerasTensor:
         """Build the input modality b-module."""
         hidden = input_layer
-
-        if input_layer.shape[1] > 768:
-            hidden_sizes = 768
-        elif input_layer.shape[1] > 512:
-            hidden_sizes = 512
-        elif input_layer.shape[1] > 256:
-            hidden_sizes = 256
+        if convolutional:
+            for i in range(4):
+                hidden = Conv1D(
+                    256,
+                    kernel_size=3,
+                    activation="relu",
+                    kernel_initializer=HeNormal(),
+                    name=f"conv_{input_layer.name}_{i}",
+                )(hidden)
+                hidden = BatchNormalization()(hidden)
+                hidden = Dropout(0.1)(hidden)
+            hidden = MaxPool1D(pool_size=2)(hidden)
+            hidden = Flatten()(hidden)
         else:
-            hidden_sizes = 128
-
-        for i in range(3):
-            hidden = Dense(
-                hidden_sizes,
-                activation="relu",
-                kernel_initializer=GlorotNormal(),
-                name=f"dense_{input_layer.name}_{i}",
-            )(hidden)
-            hidden = BatchNormalization()(hidden)
+            if input_layer.shape[1] > 768:
+                hidden_sizes = 768
+            elif input_layer.shape[1] > 512:
+                hidden_sizes = 512
+            elif input_layer.shape[1] > 256:
+                hidden_sizes = 256
+            else:
+                hidden_sizes = 128
+            for i in range(3):
+                hidden = Dense(
+                    hidden_sizes,
+                    activation="relu",
+                    kernel_initializer=GlorotNormal(),
+                    name=f"dense_{input_layer.name}_{i}",
+                )(hidden)
+                hidden = BatchNormalization()(hidden)
+                hidden = Dropout(0.1)(hidden)
         return hidden
 
     def _build_hidden_layers(self, inputs: List[KerasTensor]) -> KerasTensor:
@@ -224,7 +254,7 @@ class Hammer:
         self,
         train_samples: Union[List[str], List[Spectrum]],
         train_labels: np.ndarray,
-        validation_smiles: Union[List[str], List[Spectrum]],
+        validation_samples: Union[List[str], List[Spectrum]],
         validation_labels: np.ndarray,
         augmentation_settings: Optional[AugmentationSettings] = None,
         model_checkpoint_path: str = "checkpoints/model_checkpoint.keras",
@@ -232,22 +262,85 @@ class Hammer:
         batch_size: int = 4096,
     ) -> History:
         """Train the classifier model."""
-        input_layers: Dict[str, Input] = {
-            feature_class.pythonic_name(): Input(
-                shape=(
-                    feature_class(
-                        verbose=self._verbose,
-                        n_jobs=self._n_jobs,
-                    ).size(),
-                ),
-                name=feature_class.pythonic_name(),
-                dtype=feature_class.dtype(),
+        spectral_model: bool = isinstance(train_samples[0], Spectrum)
+
+        if spectral_model and self._feature_settings.number_of_features() > 0:
+            raise NotImplementedError(
+                "Cannot use spectral data and feature settings at the same time."
             )
-            for feature_class in self._feature_settings.iter_features()
+
+        if self._metadata is None:
+            self._metadata = {}
+
+        self._metadata["feature_settings"] = self._feature_settings.to_dict()
+        self._metadata["batch_size"] = batch_size
+        self._metadata["spectral_model"] = spectral_model
+        self._metadata["maximal_number_of_epochs"] = maximal_number_of_epochs
+
+        if spectral_model:
+            self._spectral_scaler = SpectraScaler(
+                verbose=self._verbose,
+                dtype=np.float32,
+                n_jobs=self._n_jobs,
+            )
+
+            self._spectral_scaler.fit(train_samples)
+            train_features: Dict[str, np.ndarray] = {
+                "spectral_binning": self._spectral_scaler.transform(train_samples)
+            }
+            validation_features: Dict[str, np.ndarray] = {
+                "spectral_binning": self._spectral_scaler.transform(validation_samples),
+            }
+        else:
+            train_samples = into_canonical_smiles(
+                train_samples, verbose=self._verbose, n_jobs=self._n_jobs
+            )
+            validation_samples = into_canonical_smiles(
+                validation_samples, verbose=self._verbose, n_jobs=self._n_jobs
+            )
+
+            if augmentation_settings is not None:
+                (train_samples, train_labels) = augmentation_settings.augment(
+                    train_samples,
+                    train_labels,
+                    n_jobs=self._n_jobs,
+                    verbose=self._verbose,
+                )
+                self._metadata["augmentation_settings"] = (
+                    augmentation_settings.to_dict()
+                )
+            else:
+                self._metadata["augmentation_settings"] = None
+
+            train_features = self._smiles_to_features(train_samples)
+            validation_features = self._smiles_to_features(validation_samples)
+
+            # We create a scaler for each feature that is not binary.
+            self._scalers = {}
+            for feature_class in self._feature_settings.iter_features():
+                if not feature_class.is_binary():
+                    self._scalers[feature_class.pythonic_name()] = RobustScaler()
+                    self._scalers[feature_class.pythonic_name()].fit(
+                        train_features[feature_class.pythonic_name()]
+                    )
+                    train_features[feature_class.pythonic_name()] = self._scalers[
+                        feature_class.pythonic_name()
+                    ].transform(train_features[feature_class.pythonic_name()])
+                    validation_features[feature_class.pythonic_name()] = self._scalers[
+                        feature_class.pythonic_name()
+                    ].transform(validation_features[feature_class.pythonic_name()])
+
+        input_layers: Dict[str, Input] = {
+            train_feature_name: Input(
+                shape=train_feature.shape[1:],
+                name=train_feature_name,
+                dtype=train_feature.dtype,
+            )
+            for train_feature_name, train_feature in train_features.items()
         }
 
         input_modalities: List[KerasTensor] = [
-            self._build_input_modality(input_layer)
+            self._build_input_modality(input_layer, convolutional=spectral_model)
             for input_layer in input_layers.values()
         ]
 
@@ -305,48 +398,6 @@ class Hammer:
             restore_best_weights=True,
         )
 
-        if self._metadata is None:
-            self._metadata = {}
-
-        self._metadata["feature_settings"] = self._feature_settings.to_dict()
-        self._metadata["batch_size"] = batch_size
-        self._metadata["maximal_number_of_epochs"] = maximal_number_of_epochs
-
-        train_samples = into_canonical_smiles(
-            train_samples, verbose=self._verbose, n_jobs=self._n_jobs
-        )
-        validation_smiles = into_canonical_smiles(
-            validation_smiles, verbose=self._verbose, n_jobs=self._n_jobs
-        )
-
-        if augmentation_settings is not None:
-            (train_samples, train_labels) = augmentation_settings.augment(
-                train_samples, train_labels, n_jobs=self._n_jobs, verbose=self._verbose
-            )
-            self._metadata["augmentation_settings"] = augmentation_settings.to_dict()
-        else:
-            self._metadata["augmentation_settings"] = None
-
-        train_features: Dict[str, np.ndarray] = self._smiles_to_features(train_samples)
-        validation_features: Dict[str, np.ndarray] = self._smiles_to_features(
-            validation_smiles
-        )
-
-        # We create a scaler for each feature that is not binary.
-        self._scalers = {}
-        for feature_class in self._feature_settings.iter_features():
-            if not feature_class.is_binary():
-                self._scalers[feature_class.pythonic_name()] = RobustScaler()
-                self._scalers[feature_class.pythonic_name()].fit(
-                    train_features[feature_class.pythonic_name()]
-                )
-                train_features[feature_class.pythonic_name()] = self._scalers[
-                    feature_class.pythonic_name()
-                ].transform(train_features[feature_class.pythonic_name()])
-                validation_features[feature_class.pythonic_name()] = self._scalers[
-                    feature_class.pythonic_name()
-                ].transform(validation_features[feature_class.pythonic_name()])
-
         training_history = self._model.fit(
             train_features,
             train_labels,
@@ -390,12 +441,17 @@ class Hammer:
 
         dag_path = os.path.join(path, "dag.pkl")
         scalers_path = os.path.join(path, "scalers.pkl")
+        spectral_scaler_path = os.path.join(path, "spectral_scaler.pkl")
         model_path = os.path.join(path, "model.keras")
         feature_settings_path = os.path.join(path, "feature_settings.json")
         model_plot_path = os.path.join(path, "model.png")
 
         compress_pickle.dump(self._dag, dag_path)
         compress_pickle.dump(self._scalers, scalers_path)
+
+        if self._spectral_scaler is not None:
+            compress_pickle.dump(self._spectral_scaler, spectral_scaler_path)
+
         compress_json.dump(self._feature_settings.to_dict(), feature_settings_path)
         self._model.save(model_path)
 
@@ -420,14 +476,24 @@ class Hammer:
         """Return a copy of the classifier model."""
         return deepcopy(self)
 
-    def evaluate(self, smiles: List[str], labels: np.ndarray) -> Dict[str, float]:
-        """Evaluate the classifier model."""
-        assert self._model is not None, "Model not trained yet."
-
-        smiles = into_canonical_smiles(
-            smiles, verbose=self._verbose, n_jobs=self._n_jobs
+    def _samples_to_features(
+        self, samples: Union[List[Spectrum], List[str]]
+    ) -> Dict[str, np.ndarray]:
+        """Transform a list of samples into a dictionary of features."""
+        if isinstance(samples[0], Spectrum):
+            if self._spectral_scaler is None:
+                raise ValueError("Model has not been trained on spectral data.")
+            return dict(
+                zip(
+                    ["mz", "intensities", "population"],
+                    self._spectral_scaler.transform(samples),
+                )
+            )
+        samples = into_canonical_smiles(
+            samples, verbose=self._verbose, n_jobs=self._n_jobs
         )
-        features = self._smiles_to_features(smiles)
+
+        features = self._smiles_to_features(samples)
 
         for feature_class in self._feature_settings.iter_features():
             if not feature_class.is_binary():
@@ -435,34 +501,65 @@ class Hammer:
                     feature_class.pythonic_name()
                 ].transform(features[feature_class.pythonic_name()])
 
+        return features
+
+    def evaluate(
+        self, samples: Union[List[Spectrum], List[str]], labels: np.ndarray
+    ) -> Dict[str, float]:
+        """Evaluate the classifier model."""
+        assert self._model is not None, "Model not trained yet."
+
         evaluations = self._model.evaluate(
-            features, labels, verbose=0, return_dict=True
+            self._samples_to_features(samples), labels, verbose=0, return_dict=True
         )
 
         return evaluations
 
+    def _samples_to_indices(
+        self, samples: Union[List[Spectrum], List[str]]
+    ) -> Union[List[str], List[int]]:
+        """Transform a list of samples into a list of indices."""
+        if isinstance(samples[0], Spectrum):
+            name_of_column = None
+            for needle in ("feature_id", "smiles", "inchikey"):
+                if needle in samples[0].metadata:
+                    name_of_column = needle
+                    break
+            if name_of_column is None:
+                warnings.warn(
+                    "No column name found in the metadata of some spectra. "
+                    "Using the index of the list instead."
+                )
+                return list(range(len(samples)))
+
+            indices = []
+
+            for sample in samples:
+                assert isinstance(sample, Spectrum)
+                sample_index = sample.get(name_of_column)
+                if sample_index is None:
+                    warnings.warn(
+                        f"Column '{name_of_column}' not found in the metadata of a spectrum. "
+                        "Using the index of the list instead."
+                    )
+                    return list(range(len(samples)))
+                else:
+                    indices.append(sample_index)
+            return indices
+
+        return samples
+
     def predict_proba(
-        self, smiles: Union[str, List[str]], canonicalize: bool = True
+        self,
+        samples: Union[Spectrum, List[Spectrum], str, List[str]],
     ) -> Dict[str, pd.DataFrame]:
         """Predict the probabilities of the classes."""
         assert self._model is not None, "Model not trained yet."
 
-        if isinstance(smiles, str):
-            smiles = [smiles]
+        if isinstance(samples, (str, Spectrum)):
+            samples = [samples]
 
-        if canonicalize:
-            canonical_smiles = into_canonical_smiles(
-                smiles, verbose=self._verbose, n_jobs=self._n_jobs
-            )
-            features = self._smiles_to_features(canonical_smiles)
-        else:
-            features = self._smiles_to_features(smiles)
-
-        for feature_class in self._feature_settings.iter_features():
-            if not feature_class.is_binary():
-                features[feature_class.pythonic_name()] = self._scalers[
-                    feature_class.pythonic_name()
-                ].transform(features[feature_class.pythonic_name()])
+        features = self._samples_to_features(samples)
 
         predictions: pd.DataFrame = pd.DataFrame(
             self._model.predict(
@@ -470,7 +567,7 @@ class Hammer:
                 verbose=1 if self._verbose else 0,
             ),
             columns=self._dag.nodes(),
-            index=smiles,
+            index=self._samples_to_indices(samples),
         )
 
         return {

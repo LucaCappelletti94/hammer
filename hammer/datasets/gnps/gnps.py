@@ -8,7 +8,15 @@ import compress_json
 import numpy as np
 import pandas as pd
 from matchms import Spectrum
-from matchms.filtering import normalize_intensities, default_filters
+from matchms.filtering import (
+    normalize_intensities,
+    default_filters,
+    select_by_mz,
+    reduce_to_number_of_peaks,
+    select_by_relative_intensity,
+    add_parent_mass,
+    require_minimum_number_of_peaks,
+)
 from matchms.importing import load_from_mgf
 from downloaders import BaseDownloader
 from tqdm.auto import tqdm
@@ -29,7 +37,13 @@ RARE_TERMS: List[str] = [
     "Strobilurins and derivatives",
     "Valparane diterpenoids",
     "Acutumine alkaloids",
-    "Carotenoids (C40, β-κ)"
+    "Glycosyldiacylglycerols",
+    "Viscidane diterpenoids",
+    "Carotenoids (C40, β-κ)",
+    "Chamigrane sesquiterpenoids",
+    "Carotenoids (C40, β-Ψ)",
+    "Lactam bearing macrolide lactones",
+    "Monocarbocyclic sesterterpenoids",
 ]
 
 
@@ -40,6 +54,8 @@ class GNPSDataset(Dataset):
         self,
         random_state: int = 1_532_791_432,
         maximal_number_of_molecules: Optional[int] = None,
+        threshold: float = 0.9,
+        ionization: str = "both",
         directory: str = "datasets/gnps",
         verbose: bool = True,
     ):
@@ -49,9 +65,17 @@ class GNPSDataset(Dataset):
             maximal_number_of_molecules=maximal_number_of_molecules,
             verbose=verbose,
         )
+        if ionization not in ["positive", "negative", "both"]:
+            raise ValueError(
+                f"Invalid value for ionization: {ionization}. "
+                "Valid values are 'positive', 'negative' and 'both'."
+            )
+
         self._layered_dag = NPCDAG()
         self._directory = directory
         self._number_of_samples = 0
+        self._threshold = threshold
+        self._ionization = ionization
         self._spectra: List[Spectrum] = []
         self._labels: List[np.ndarray] = []
 
@@ -124,13 +148,13 @@ class GNPSDataset(Dataset):
             found_uncertain = False
             for label in spectra_labels.values():
                 spectrum_labels = label.iloc[i]
-                if (spectrum_labels < 0.75).all():
+                if (spectrum_labels < self._threshold).all():
                     found_uncertain = True
                     break
                 if all(
                     label_name in RARE_TERMS
                     for label_name, prediction in spectrum_labels.items()
-                    if prediction > 0.75
+                    if prediction > self._threshold
                 ):
                     found_uncertain = True
                     break
@@ -148,14 +172,35 @@ class GNPSDataset(Dataset):
                 for label_name, prediction in spectrum_labels.items():
                     if label_name in RARE_TERMS:
                         continue
-                    if prediction >= 0.75:
+                    if prediction >= self._threshold:
                         labels[self.layered_dag().node_id(label_name)] = 1
 
+            # If any of the intensities is negative we skip the spectrum
+            # as I have no clue what to do with those.
+            if np.any(spectrum.peaks.intensities < 0):
+                continue
+
+            if self._ionization != "both":
+                if spectrum.get("ionmode") != self._ionization:
+                    continue
+
             spectrum = default_filters(spectrum)
-            spectrum = normalize_intensities(spectrum)
+            spectrum = add_parent_mass(spectrum)
+            normalized_spectrum: Optional[Spectrum] = normalize_intensities(spectrum)
+            if normalized_spectrum is None:
+                continue
+            normalized_spectrum = select_by_mz(
+                normalized_spectrum, mz_from=0, mz_to=2000
+            )
+            if (
+                require_minimum_number_of_peaks(normalized_spectrum, n_required=5)
+                is None
+            ):
+                continue
+
             self._number_of_samples += 1
 
-            self._spectra.append(spectrum)
+            self._spectra.append(normalized_spectrum)
             self._labels.append(labels)
 
         with open("gnps_spectra.pkl", "wb") as f:

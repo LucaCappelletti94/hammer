@@ -20,6 +20,13 @@ class NPCDAG(LayeredDAG):
         self._nodes: List[str] = (
             self._pathway_names + self._superclass_names + self._class_names
         )
+        self._node_id: Dict[str, int] = {
+            node_name: node_id for node_id, node_name in enumerate(self._nodes)
+        }
+
+    def node_id(self, node_name: str) -> int:
+        """Return the ID of a node."""
+        return self._node_id[node_name]
 
     def nodes(self) -> List[str]:
         """Return the nodes in the DAG."""

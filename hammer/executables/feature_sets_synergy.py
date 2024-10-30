@@ -5,7 +5,7 @@ from argparse import Namespace, ArgumentParser
 from typing import List
 from tqdm.auto import tqdm
 import pandas as pd
-from barplots import barplots # type: ignore
+from barplots import barplots  # type: ignore
 from hammer.executables.holdouts_evaluation import holdouts_evaluation
 from hammer.feature_settings import FeatureSettings, FEATURES
 from hammer.executables.argument_parser_utilities import (

@@ -42,6 +42,13 @@ hammer visualize --verbose\
     --image-format "png"
 ```
 
+```bash
+hammer visualize --verbose\
+    --dataset GNPS\
+    --output-directory "data_visualizations/gnps"\
+    --image-format "png"
+```
+
 ### DAG Coverage
 
 One of the goals of this project is to, over time and with the help of the community, increase the overall number of pathways, superclasses, and classes that the model can predict. The model employs as a form of static attention a DAG that harmonizes the predictions of the different tasks. At this time, the dataset we are using **DOES NOT** cover all of the combinations of pathways, superclasses and classes that the DAG allows for. We aim to increase the coverage of the DAG over time, and we welcome contributions to the dataset that can help us achieve this goal. *We are starting out from the dataset made available by [NP Classifier](https://github.com/mwang87/NP-Classifier).*
@@ -96,6 +103,18 @@ hammer feature-sets-evaluation \
     --performance-path "performance/feature_sets_evaluation_harmonized.csv" \
     --training-directory "training/feature_selection_harmonized" \
     --barplot-directory "barplots/feature_sets_evaluation_harmonized"
+```
+
+```bash
+hammer holdouts \
+    --verbose \
+    --holdouts 10 \
+    --dataset GNPS \
+    --test-size 0.2 \
+    --validation-size 0.2 \
+    --performance-path "performance/feature_sets_evaluation_gnps.csv" \
+    --training-directory "training/feature_selection_gnps" \
+    --barplot-directory "barplots/feature_sets_evaluation_gnps"
 ```
 
 Executing this command will generate the barplots [you can find in this directory](https://github.com/LucaCappelletti94/hammer/tree/main/feature_sets_evaluation_barplots). In the following barplot, you will find the AUPRC for each class, for validation, test a, for each feature set, averaged over all holdouts:
@@ -199,8 +218,12 @@ hammer train \
     --verbose \
     --dataset NPCHarmonized \
     --include-extended-connectivity \
+    --include-layered \
+    --include-topological-torsion \
+    --include-van-der-waals-surface-area \
+    --include-molecular-quantum-numbers \
     --test-size 0.2 \
-    --training-directory "npc.harmonized.v1.tar.gz"
+    --training-directory "npc.harmonized.v2.tar.gz"
 ```
 
 ### Predict
@@ -251,6 +274,19 @@ hammer predict \
     --version npc.harmonized.v1 \
     --verbose \
     --output-dir "divergent_npc_entries/npc.harmonized.v1/"
+```
+
+It is even possible to run predictions directly on the SMILES in an MGF file metadata.
+In such a case, you must specify that you want to run a prediction on the MGF file metadata,
+and not the Spectra themselves, by using the `--only-smiles` flag:
+
+```bash
+hammer predict \
+    --input "matchms.mgf" \
+    --model-path "npc.harmonized.v2.tar.gz" \
+    --verbose \
+    --output-dir "matchms_predictions" \
+    --only-smiles
 ```
 
 ## Citation

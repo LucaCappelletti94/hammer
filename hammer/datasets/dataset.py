@@ -45,7 +45,7 @@ class Dataset(Hashable):
     def number_of_samples(self) -> int:
         """Return the number of samples in the dataset."""
 
-    def consistent_hash(self,use_approximation: bool = False) -> str:
+    def consistent_hash(self, use_approximation: bool = False) -> str:
         """Return a consistent hash for the dataset."""
         return sha256(
             {
@@ -65,10 +65,10 @@ class Dataset(Hashable):
         """Return all the smiles and labels."""
         all_labels: List[np.ndarray] = []
         samples: List[Any] = []
-        for (sample, labels) in self.iter_samples():
+        for sample, labels in self.iter_samples():
             samples.append(sample)
             all_labels.append(labels)
-        
+
         return samples, np.vstack(all_labels)
 
     def primary_split(
@@ -150,9 +150,7 @@ class Dataset(Hashable):
             )
 
         # We identify the least common labels.
-        least_common_labels: np.ndarray = np.zeros(
-            len(train_smiles), dtype=np.uint8
-        )
+        least_common_labels: np.ndarray = np.zeros(len(train_smiles), dtype=np.uint8)
         for i, train_label in enumerate(train_labels):
             least_common_labels[i] = min(
                 np.argwhere(train_label == 1)[:, 0],

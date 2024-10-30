@@ -12,11 +12,15 @@ from hammer.molecular_features.scikit_fingerprints.extended_connectivity import 
 from hammer.molecular_features.scikit_fingerprints.functional_groups import (
     FunctionalGroupsFingerprint,
 )
-from hammer.molecular_features.scikit_fingerprints.ghose_crippen import GhoseCrippenFingerprint
+from hammer.molecular_features.scikit_fingerprints.ghose_crippen import (
+    GhoseCrippenFingerprint,
+)
 from hammer.molecular_features.scikit_fingerprints.laggner import LaggnerFingerprint
 from hammer.molecular_features.scikit_fingerprints.layered import LayeredFingerprint
 from hammer.molecular_features.scikit_fingerprints.lingo import LingoFingerprint
-from hammer.molecular_features.scikit_fingerprints.map import MinHashedAtomPairFingerprint
+from hammer.molecular_features.scikit_fingerprints.map import (
+    MinHashedAtomPairFingerprint,
+)
 from hammer.molecular_features.scikit_fingerprints.minhashed import MinHashedFingerprint
 from hammer.molecular_features.scikit_fingerprints.molecular_quantum_numbers import (
     MolecularQuantumNumbersFingerprint,
@@ -34,7 +38,9 @@ from hammer.molecular_features.scikit_fingerprints.maccs import MACCSFingerprint
 from hammer.molecular_features.scikit_fingerprints.topological_torsion import (
     TopologicalTorsionFingerprint,
 )
-from hammer.molecular_features.scikit_fingerprints.rdkit_fingerprint import RDKitFingerprint
+from hammer.molecular_features.scikit_fingerprints.rdkit_fingerprint import (
+    RDKitFingerprint,
+)
 
 __all__ = [
     "FeatureInterface",

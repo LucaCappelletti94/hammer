@@ -53,6 +53,7 @@ class Trainer(Hashable):
         test_size: float,
     ) -> dict[str, dict[str, float]]:
         """Train the classifier."""
+        clear_session()
         try:
             import tensorflow as tf  # pylint: disable=import-outside-toplevel
 
@@ -68,7 +69,7 @@ class Trainer(Hashable):
         except ImportError:
             pass
 
-        (train_smiles, train_labels), (test_smiles, test_labels) = (
+        (train_samples, train_labels), (test_samples, test_labels) = (
             self._dataset.primary_split(
                 test_size=test_size,
             )
@@ -82,9 +83,9 @@ class Trainer(Hashable):
             n_jobs=self._n_jobs,
         )
         classifier.fit(
-            train_smiles=train_smiles,
+            train_samples=train_samples,
             train_labels=train_labels,
-            validation_smiles=test_smiles,
+            validation_samples=test_samples,
             validation_labels=test_labels,
             augmentation_settings=self._augmentation_settings,
             maximal_number_of_epochs=self._maximal_number_of_epochs,
@@ -92,8 +93,8 @@ class Trainer(Hashable):
         classifier.save(self._training_directory)
 
         performance = {
-            "train": classifier.evaluate(train_smiles, train_labels),
-            "valid": classifier.evaluate(test_smiles, test_labels),
+            "train": classifier.evaluate(train_samples, train_labels),
+            "valid": classifier.evaluate(test_samples, test_labels),
         }
 
         del classifier
@@ -109,9 +110,9 @@ class Trainer(Hashable):
         validation_size: float,
     ) -> pd.DataFrame:
         """Train the classifier."""
+
         try:
             import tensorflow as tf  # pylint: disable=import-outside-toplevel
-
             gpus = tf.config.experimental.list_physical_devices("GPU")
             if gpus:
                 # Restrict TensorFlow to only use the first GPU
@@ -124,15 +125,15 @@ class Trainer(Hashable):
         except ImportError:
             pass
 
-        (_train_smiles, _train_labels), (test_smiles, test_labels) = (
+        (_train_samples, _train_labels), (test_samples, test_labels) = (
             self._dataset.primary_split(
                 test_size=test_size,
             )
         )
         all_performance = []
         for holdout_number, (
-            (sub_train_smiles, sub_train_labels),
-            (validation_smiles, validation_labels),
+            (sub_train_samples, sub_train_labels),
+            (validation_samples, validation_labels),
         ) in enumerate(
             self._dataset.train_split(
                 number_of_holdouts=number_of_holdouts,
@@ -143,12 +144,12 @@ class Trainer(Hashable):
             holdout_hash = sha256(
                 {
                     "self": self,
-                    "sub_train_smiles": sub_train_smiles,
-                    "sub_train_labels": sub_train_labels,
-                    "validation_smiles": validation_smiles,
-                    "validation_labels": validation_labels,
-                    "test_smiles": test_smiles,
-                    "test_labels": test_labels,
+                    "sub_train_samples": sub_train_samples[:50],
+                    "sub_train_labels": sub_train_labels[:50],
+                    "validation_samples": validation_samples[:50],
+                    "validation_labels": validation_labels[:50],
+                    "test_samples": test_samples[:50],
+                    "test_labels": test_labels[:50],
                 },
                 use_approximation=True,
             )
@@ -164,9 +165,9 @@ class Trainer(Hashable):
                     n_jobs=self._n_jobs,
                 )
                 classifier.fit(
-                    train_smiles=sub_train_smiles,
+                    train_samples=sub_train_samples,
                     train_labels=sub_train_labels,
-                    validation_smiles=validation_smiles,
+                    validation_samples=validation_samples,
                     validation_labels=validation_labels,
                     augmentation_settings=self._augmentation_settings,
                     maximal_number_of_epochs=self._maximal_number_of_epochs,
@@ -176,12 +177,12 @@ class Trainer(Hashable):
             classifier = Hammer.load_from_path(path)
 
             sub_train_performance = classifier.evaluate(
-                sub_train_smiles, sub_train_labels
+                sub_train_samples, sub_train_labels
             )
             valid_performance = classifier.evaluate(
-                validation_smiles, validation_labels
+                validation_samples, validation_labels
             )
-            test_performance = classifier.evaluate(test_smiles, test_labels)
+            test_performance = classifier.evaluate(test_samples, test_labels)
             for performance, subset in [
                 (sub_train_performance, "subtrain"),
                 (valid_performance, "validation"),
@@ -198,5 +199,10 @@ class Trainer(Hashable):
             del classifier
             clear_session()
             gc.collect()
+
+        pd.DataFrame(all_performance).to_csv(
+            "last_performance.csv",
+            index=False,
+        )
 
         return pd.DataFrame(all_performance)

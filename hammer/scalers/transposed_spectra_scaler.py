@@ -11,7 +11,7 @@ import numpy.typing as npt
 from hammer.constants import LOG2
 
 
-class SpectraScaler(BaseEstimator, TransformerMixin):
+class TransposedSpectraScaler(BaseEstimator, TransformerMixin):
     """Scaler for matchms Spectrum objects robust to outlier peaks."""
 
     def __init__(
@@ -35,9 +35,9 @@ class SpectraScaler(BaseEstimator, TransformerMixin):
         include_losses : bool = True
             Whether to include losses in the transformation.
         normalize : bool = True
-            Whether to normalize the m/z values.
+            Whether to normalize the MZ.
         normalize_by_parent_mass : bool = False
-            Whether to normalize the m/z values by the parent mass.
+            Whether to normalize the MZ by the parent mass.
         log_intensity : bool = True
             Whether to log-transform the intensities.
         log_mz : bool = True
@@ -49,8 +49,8 @@ class SpectraScaler(BaseEstimator, TransformerMixin):
         """
         self.bins: int = bins
         self.dtype: npt.DTypeLike = dtype
-        self.verbose: bool = verbose
         self.include_losses: bool = include_losses
+        self.verbose: bool = verbose
         self.normalize: bool = normalize
         self.normalize_by_parent_mass: bool = normalize_by_parent_mass
         self.log_intensity: bool = log_intensity
@@ -136,65 +136,76 @@ class SpectraScaler(BaseEstimator, TransformerMixin):
         # We allocate the two arrays to store the binned and averaged
         # m/z values and the bin averaged intensities.
         if self.include_losses:
-            number_of_features = 2
+            features = 2
         else:
-            number_of_features = 1
+            features = 1
 
-        binned = np.zeros((self.bins, number_of_features), dtype=self.dtype)
-        population = np.zeros((self.bins, number_of_features), dtype=self.dtype)
+        binned = np.zeros((self.bins, features), dtype=self.dtype)
+        population = np.zeros((self.bins, features), dtype=self.dtype)
+
+        # We compute the number of peaks for each bin. In some
+        # instances, the number of peaks for each bin may be less
+        # than one, and in such cases we spread the intensity of the
+        # peak over the number of bins necessary to cover the full
+        # width of the peak.
 
         if self.include_losses:
-            losses = spectrum.losses
-
-            if losses is not None and losses.mz.size > 0:
+            spectrum_losses = spectrum.losses
+            if spectrum_losses is not None and spectrum_losses.mz.size > 0:
                 if self.normalize_by_parent_mass:
-                    loss_mzs = self.losses_scaler.transform(
-                        (losses.mz / spectrum.get("parent_mass")).reshape(-1, 1)
+                    normalized_loss_mzs = self.losses_scaler.transform(
+                        spectrum_losses.mz.reshape(-1, 1) / spectrum.get("parent_mass")
                     ).flatten()
                 else:
-                    loss_mzs = self.losses_scaler.transform(
-                        losses.mz.reshape(-1, 1)
+                    normalized_loss_mzs = self.losses_scaler.transform(
+                        spectrum_losses.mz.reshape(-1, 1)
                     ).flatten()
 
-                loss_intensities = losses.intensities
+                intensities = spectrum_losses.intensities
 
                 if self.log_intensity:
-                    loss_intensities = np.log1p(loss_intensities) / LOG2
-
+                    intensities = np.log1p(intensities) / LOG2
+                
                 if self.log_mz:
-                    loss_mzs = np.log1p(loss_mzs) / LOG2
+                    normalized_loss_mzs = np.log1p(normalized_loss_mzs) / LOG2
 
-                for loss_mz, loss_intensity in zip(loss_mzs, loss_intensities):
-                    bin_index = int(np.round(loss_mz * (self.bins - 1)))
-                    binned[bin_index, 1] += loss_intensity
+                for mz, intensity in zip(
+                    normalized_loss_mzs, spectrum_losses.intensities
+                ):
+                    assert intensity >= 0
+                    assert intensity <= 1
+
+                    bin_index = int(np.round(intensity * (self.bins - 1)))
+                    binned[bin_index, 1] += mz
                     population[bin_index, 1] += 1
 
         if self.normalize_by_parent_mass:
-            mzs = self.peaks_scaler.transform(
-                (spectrum.mz / spectrum.get("parent_mass")).reshape(-1, 1)
+            normalized_mzs = self.peaks_scaler.transform(
+                spectrum.mz.reshape(-1, 1) / spectrum.get("parent_mass")
             ).flatten()
         else:
-            mzs = self.peaks_scaler.transform(spectrum.mz.reshape(-1, 1)).flatten()
+            normalized_mzs = self.peaks_scaler.transform(
+                spectrum.mz.reshape(-1, 1)
+            ).flatten()
 
         intensities = spectrum.intensities
 
         if self.log_intensity:
             intensities = np.log1p(intensities) / LOG2
 
-        if self.log_mz:
-            mzs = np.log1p(mzs) / LOG2
+        if  self.log_mz:
+            normalized_mzs = np.log1p(normalized_mzs) / LOG2
 
-        for mz, intensity in zip(mzs, intensities):
-            bin_index = int(np.round(mz * (self.bins - 1)))
-            binned[bin_index, 0] += intensity
+        for mz, intensity in zip(normalized_mzs, spectrum.intensities):
+            bin_index = int(np.round(intensity * (self.bins - 1)))
+            binned[bin_index, 0] += mz
             population[bin_index, 0] += 1
 
         if self.normalize:
             for i in range(self.bins):
-                if population[i, 0] > 0:
-                    binned[i, 0] /= population[i, 0]
-                if self.include_losses and population[i, 1] > 0:
-                    binned[i, 1] /= population[i, 1]
+                for feature in range(features):
+                    if population[i, feature] > 0:
+                        binned[i, feature] /= population[i, feature]
 
         return binned
 
@@ -214,7 +225,6 @@ class SpectraScaler(BaseEstimator, TransformerMixin):
         np.ndarray
             The transformed data.
         """
-
         # We allocate the two arrays to store the binned and averaged
         # m/z values and the bin averaged intensities.
         if self.include_losses:
@@ -222,6 +232,8 @@ class SpectraScaler(BaseEstimator, TransformerMixin):
         else:
             features = 1
 
+        # We allocate the two arrays to store the binned and averaged
+        # m/z values and the bin averaged intensities.
         binned = np.zeros((len(X), self.bins, features), dtype=self.dtype)
 
         if len(X) < self._n_jobs:

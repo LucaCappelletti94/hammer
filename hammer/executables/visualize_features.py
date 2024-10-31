@@ -12,7 +12,11 @@ from sklearn.decomposition import PCA  # type: ignore
 from sklearn.preprocessing import RobustScaler  # type: ignore
 
 from matplotlib.colors import TABLEAU_COLORS as TABLEAU_COLORS_DICT
-from hammer.scalers import SpectraScaler, TransposedSpectraScaler
+from hammer.scalers import (
+    SpectraScaler,
+    TransposedSpectraScaler,
+    SpectralMetadataExtractor,
+)
 from hammer.datasets import Dataset
 from hammer.dags import LayeredDAG
 from hammer.molecular_features import FeatureInterface
@@ -46,169 +50,123 @@ def _visualize_feature(
     assert isinstance(top, dict)
     assert isinstance(arguments, Namespace)
 
-    normalize_by_parent_mass = False
+    if feature is not None:
+        name = feature.name()
+    else:
+        name = "Spectral Metadata"
 
-    for log_intensity, log_mz, norm, normalize_by_parent_mass, include_losses in tqdm(
-        [
-            (log_intensity, log_mz, norm, normalize_by_parent_mass, include_losses)
-            for log_intensity in [True, False]
-            for log_mz in [True, False]
-            for norm in [True, False]
-            for include_losses in [True, False]
-        ]
-    ):
+    path = os.path.join(arguments.output_directory, f"{name}.{arguments.image_format}")
 
-        if feature is not None:
-            name = feature.name()
-        else:
-            descriptors = []
-            if log_intensity:
-                descriptors.append("Log Int")
+    if os.path.exists(path):
+        return
 
-            if log_mz:
-                descriptors.append("Log MZ")
+    if feature is not None:
+        assert isinstance(feature, FeatureInterface)
+        assert isinstance(samples[0], Mol)
+        x: np.ndarray = feature.transform_molecules(samples)
+        if not feature.__class__.is_binary():
+            x = RobustScaler().fit_transform(x)
 
-            if norm:
-                descriptors.append("Normalized")
-
-            if include_losses:
-                descriptors.append("With losses")
-
-            if normalize_by_parent_mass:
-                descriptors.append("Normalize by parent mass")
-
-            size = 2048
-
-            if include_losses:
-                size *= 2
-
-            descriptors.append(str(size))
-            name = f"Transposed spectral binning ({', '.join(descriptors)})"
-
-        path = os.path.join(
-            arguments.output_directory, f"{name}.{arguments.image_format}"
+        if np.isnan(x).any():
+            return
+    else:
+        assert isinstance(samples[0], Spectrum)
+        x = np.hstack(
+            list(
+                SpectralMetadataExtractor(
+                    verbose=arguments.verbose,
+                    n_jobs=arguments.n_jobs,
+                )
+                .fit_transform(samples)
+                .values()
+            )
         )
 
-        if os.path.exists(path):
-            continue
+        # x = np.hstack(
+        #     [
+        #         x1.reshape((x1.shape[0], -1)),
+        #         x2.reshape((x2.shape[0], -1)),
+        #     ]
+        # )
 
-        if feature is not None:
-            assert isinstance(feature, FeatureInterface)
-            assert isinstance(samples[0], Mol)
-            x: np.ndarray = feature.transform_molecules(samples)
-            if not feature.__class__.is_binary():
-                x = RobustScaler().fit_transform(x)
+    try:
+        from MulticoreTSNE import (  # pylint: disable=import-outside-toplevel
+            MulticoreTSNE,
+        )
 
-            if np.isnan(x).any():
-                return
-        else:
-            assert isinstance(samples[0], Spectrum)
-            # x = SpectraScaler(
-            #     bins=2048,
-            #     include_losses=include_losses,
-            #     normalize=norm,
-            #     normalize_by_parent_mass=normalize_by_parent_mass,
-            #     log_intensity=log_intensity,
-            #     log_mz=log_mz,
-            #     verbose=arguments.verbose,
-            #     n_jobs=arguments.n_jobs,
-            # ).fit_transform(samples).reshape((len(samples), -1))
-            x = TransposedSpectraScaler(
-                bins=2048,
-                include_losses=include_losses,
-                normalize=norm,
-                normalize_by_parent_mass=normalize_by_parent_mass,
-                log_intensity=log_intensity,
-                log_mz=log_mz,
-                verbose=arguments.verbose,
-                n_jobs=arguments.n_jobs,
-            ).fit_transform(samples).reshape((len(samples), -1))
+        tsne = MulticoreTSNE(
+            n_components=2,
+            n_jobs=arguments.n_jobs,
+            verbose=1,
+            n_iter_early_exag=5 if arguments.smoke_test else 250,
+            n_iter=10 if arguments.smoke_test else 1000,
+        )
+    except ImportError:
+        from sklearn.manifold import TSNE  # pylint: disable=import-outside-toplevel
 
-            # x = np.hstack(
-            #     [
-            #         x1.reshape((x1.shape[0], -1)),
-            #         x2.reshape((x2.shape[0], -1)),
-            #     ]
-            # )
+        tsne = TSNE(
+            n_components=2,
+            n_jobs=arguments.n_jobs,
+            verbose=1,
+            n_iter=10 if arguments.smoke_test else 1000,
+        )
 
-        try:
-            from MulticoreTSNE import (  # pylint: disable=import-outside-toplevel
-                MulticoreTSNE,
+    pca = PCA(n_components=50)
+
+    if x.shape[1] > 50:
+        # First, we reduce the dimensionality of the features to 50
+        x_reduced: np.ndarray = pca.fit_transform(x)
+    else:
+        x_reduced = x
+
+    # We compute the 2d version using PCA
+    x_pca: np.ndarray = PCA(n_components=2).fit_transform(x)
+
+    # Next, we finish the reduction to 2 dimensions with t-SNE
+    x_tsne: np.ndarray = tsne.fit_transform(x_reduced)
+
+    fig, ax = plt.subplots(ncols=3, nrows=2, figsize=(21, 14), dpi=200)
+
+    for i, (decomposition, decomposition_name) in enumerate(
+        [(x_pca, "PCA"), (x_tsne, "t-SNE")]
+    ):
+        for j, (label_name, common) in enumerate(most_common.items()):
+            top_labels = top[label_name]
+            ax[i, j].scatter(
+                decomposition[:, 0],
+                decomposition[:, 1],
+                c=[TABLEAU_COLORS[color_index] for color_index in common],
+                marker=".",
+                alpha=0.5,
             )
 
-            tsne = MulticoreTSNE(
-                n_components=2,
-                n_jobs=arguments.n_jobs,
-                verbose=1,
-                n_iter_early_exag=5 if arguments.smoke_test else 250,
-                n_iter=10 if arguments.smoke_test else 1000,
-            )
-        except ImportError:
-            from sklearn.manifold import TSNE  # pylint: disable=import-outside-toplevel
+            ax[i, j].set_title(f"{name} - {label_name.capitalize()}")
+            ax[i, j].set_xlabel(f"{decomposition_name} 1")
+            if j == 0:
+                ax[i, j].set_ylabel(f"{decomposition_name} 2")
 
-            tsne = TSNE(
-                n_components=2,
-                n_jobs=arguments.n_jobs,
-                verbose=1,
-                n_iter=10 if arguments.smoke_test else 1000,
-            )
-
-        pca = PCA(n_components=50)
-
-        if x.shape[1] > 50:
-            # First, we reduce the dimensionality of the features to 50
-            x_reduced: np.ndarray = pca.fit_transform(x)
-        else:
-            x_reduced = x
-
-        # We compute the 2d version using PCA
-        x_pca: np.ndarray = PCA(n_components=2).fit_transform(x)
-
-        # Next, we finish the reduction to 2 dimensions with t-SNE
-        x_tsne: np.ndarray = tsne.fit_transform(x_reduced)
-
-        fig, ax = plt.subplots(ncols=3, nrows=2, figsize=(21, 14), dpi=200)
-
-        for i, (decomposition, decomposition_name) in enumerate(
-            [(x_pca, "PCA"), (x_tsne, "t-SNE")]
-        ):
-            for j, (label_name, common) in enumerate(most_common.items()):
-                top_labels = top[label_name]
-                ax[i, j].scatter(
-                    decomposition[:, 0],
-                    decomposition[:, 1],
-                    c=[TABLEAU_COLORS[color_index] for color_index in common],
-                    marker=".",
-                    alpha=0.5,
-                )
-
-                ax[i, j].set_title(f"{name} - {label_name.capitalize()}")
-                ax[i, j].set_xlabel(f"{decomposition_name} 1")
-                if j == 0:
-                    ax[i, j].set_ylabel(f"{decomposition_name} 2")
-
-                # We populate and display the legend
-                handles = []
-                labels = []
-                for k, label in enumerate(top_labels):
-                    handles.append(
-                        plt.Line2D(
-                            [0],
-                            [0],
-                            marker="o",
-                            color="w",
-                            markerfacecolor=TABLEAU_COLORS[k],
-                            label=label,
-                        )
+            # We populate and display the legend
+            handles = []
+            labels = []
+            for k, label in enumerate(top_labels):
+                handles.append(
+                    plt.Line2D(
+                        [0],
+                        [0],
+                        marker="o",
+                        color="w",
+                        markerfacecolor=TABLEAU_COLORS[k],
+                        label=label,
                     )
-                    labels.append(label)
-                ax[i, j].legend(handles, labels, ncols=3, prop={"size": 8})
+                )
+                labels.append(label)
+            ax[i, j].legend(handles, labels, ncols=3, prop={"size": 8})
 
-        plt.tight_layout()
+    plt.tight_layout()
 
-        os.makedirs(arguments.output_directory, exist_ok=True)
-        fig.savefig(path)
-        plt.close()
+    os.makedirs(arguments.output_directory, exist_ok=True)
+    fig.savefig(path)
+    plt.close()
 
 
 def add_visualize_features_subcommand(visualize_features_parser: ArgumentParser):

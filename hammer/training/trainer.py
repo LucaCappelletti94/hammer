@@ -4,7 +4,7 @@ import os
 import gc
 from typing import Optional
 import pandas as pd
-from keras.api.backend import clear_session # type: ignore
+from keras.api.backend import clear_session  # type: ignore
 from dict_hash import sha256, Hashable
 from hammer.datasets import Dataset
 from hammer.model import Hammer
@@ -113,6 +113,7 @@ class Trainer(Hashable):
 
         try:
             import tensorflow as tf  # pylint: disable=import-outside-toplevel
+
             gpus = tf.config.experimental.list_physical_devices("GPU")
             if gpus:
                 # Restrict TensorFlow to only use the first GPU
@@ -164,7 +165,7 @@ class Trainer(Hashable):
                     verbose=self._verbose,
                     n_jobs=self._n_jobs,
                 )
-                classifier.fit(
+                history = classifier.fit(
                     train_samples=sub_train_samples,
                     train_labels=sub_train_labels,
                     validation_samples=validation_samples,
@@ -172,6 +173,18 @@ class Trainer(Hashable):
                     augmentation_settings=self._augmentation_settings,
                     maximal_number_of_epochs=self._maximal_number_of_epochs,
                 )
+
+                history_df = pd.DataFrame(history.history)
+
+                os.makedirs(
+                    os.path.join(self._training_directory, holdout_hash), exist_ok=True
+                )
+
+                history_df.to_csv(
+                    os.path.join(self._training_directory, holdout_hash, "history.csv"),
+                    index=False,
+                )
+
                 classifier.save(path)
 
             classifier = Hammer.load_from_path(path)

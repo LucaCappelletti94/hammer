@@ -17,7 +17,7 @@ class TransposedSpectraScaler(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         bins: int = 2048,
-        include_losses: bool = True,
+        include_losses: bool = False,
         normalize: bool = True,
         normalize_by_parent_mass: bool = False,
         log_intensity: bool = True,
@@ -136,9 +136,9 @@ class TransposedSpectraScaler(BaseEstimator, TransformerMixin):
         # We allocate the two arrays to store the binned and averaged
         # m/z values and the bin averaged intensities.
         if self.include_losses:
-            features = 2
+            features = 4
         else:
-            features = 1
+            features = 2
 
         binned = np.zeros((self.bins, features), dtype=self.dtype)
         population = np.zeros((self.bins, features), dtype=self.dtype)
@@ -176,7 +176,8 @@ class TransposedSpectraScaler(BaseEstimator, TransformerMixin):
                     assert intensity <= 1
 
                     bin_index = int(np.round(intensity * (self.bins - 1)))
-                    binned[bin_index, 1] += mz
+                    binned[bin_index, 2] += mz
+                    binned[bin_index, 3] += mz
                     population[bin_index, 1] += 1
 
         if self.normalize_by_parent_mass:
@@ -199,13 +200,17 @@ class TransposedSpectraScaler(BaseEstimator, TransformerMixin):
         for mz, intensity in zip(normalized_mzs, spectrum.intensities):
             bin_index = int(np.round(intensity * (self.bins - 1)))
             binned[bin_index, 0] += mz
+            binned[bin_index, 1] += intensity
             population[bin_index, 0] += 1
 
         if self.normalize:
             for i in range(self.bins):
-                for feature in range(features):
-                    if population[i, feature] > 0:
-                        binned[i, feature] /= population[i, feature]
+                if population[i, 0] > 0:
+                    binned[i, 0] /= population[i, 0]
+                    binned[i, 1] /= population[i, 0]
+                if self.include_losses and population[i, 1] > 0:
+                    binned[i, 2] /= population[i, 1]
+                    binned[i, 3] /= population[i, 1]
 
         return binned
 
@@ -228,9 +233,9 @@ class TransposedSpectraScaler(BaseEstimator, TransformerMixin):
         # We allocate the two arrays to store the binned and averaged
         # m/z values and the bin averaged intensities.
         if self.include_losses:
-            features = 2
+            features = 4
         else:
-            features = 1
+            features = 2
 
         # We allocate the two arrays to store the binned and averaged
         # m/z values and the bin averaged intensities.

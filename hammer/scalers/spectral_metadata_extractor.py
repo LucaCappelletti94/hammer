@@ -118,6 +118,7 @@ class SpectralMetadataExtractor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
+        include_adducts: bool = False,
         verbose: bool = True,
         n_jobs: Optional[int] = 1,
     ):
@@ -125,6 +126,8 @@ class SpectralMetadataExtractor(BaseEstimator, TransformerMixin):
 
         Parameters
         ----------
+        include_adducts : bool = True
+            Whether to include adducts in the extracted metadata.
         verbose : bool = True
             Whether to display progress bars.
         n_jobs : Optional[int] = 1
@@ -149,10 +152,13 @@ class SpectralMetadataExtractor(BaseEstimator, TransformerMixin):
             dtype=np.uint8,
             handle_unknown="ignore",
         )
-        self._adduct_encoder: OneHotEncoder = OneHotEncoder(
-            dtype=np.uint8,
-            handle_unknown="ignore",
-        )
+        if include_adducts:
+            self._adduct_encoder: Optional[OneHotEncoder] = OneHotEncoder(
+                dtype=np.uint8,
+                handle_unknown="ignore",
+            )
+        else:
+            self._adduct_encoder = None
 
     # pylint: disable=invalid-name
     # pylint: disable=unused-argument
@@ -190,22 +196,23 @@ class SpectralMetadataExtractor(BaseEstimator, TransformerMixin):
             raise ValueError("No charge found in the spectra.")
         self._charge_scaler.fit(property_values.reshape(-1, 1))
 
-        adducts: List[str] = [
-            normalize_adduct(spectrum.get("adduct"))
-            for spectrum in tqdm(
-                X,
-                desc="Extracting adducts",
-                disable=not self.verbose,
-                total=len(X),
-                leave=False,
-                dynamic_ncols=True,
-            )
-        ]
+        if self._adduct_encoder is not None:
+            adducts: List[str] = [
+                normalize_adduct(spectrum.get("adduct"))
+                for spectrum in tqdm(
+                    X,
+                    desc="Extracting adducts",
+                    disable=not self.verbose,
+                    total=len(X),
+                    leave=False,
+                    dynamic_ncols=True,
+                )
+            ]
 
-        if len(adducts) == 0:
-            raise ValueError("No adducts found in the spectra.")
+            if len(adducts) == 0:
+                raise ValueError("No adducts found in the spectra.")
 
-        self._adduct_encoder.fit(np.array(adducts).reshape(-1, 1))
+            self._adduct_encoder.fit(np.array(adducts).reshape(-1, 1))
 
         number_of_peaks: np.ndarray = np.zeros(len(X))
         number_of_losses: np.ndarray = np.zeros(len(X))
@@ -290,9 +297,10 @@ class SpectralMetadataExtractor(BaseEstimator, TransformerMixin):
             ionization_modes.append(ionization_mode)
             mass_spec_ionization_mode: str = spectrum.get("ms_ionisation", "UNKNOWN")
             mass_spec_ionization_modes.append(mass_spec_ionization_mode)
-            adducts.append(normalize_adduct(spectrum.get("adduct")))
+            if self._adduct_encoder is not None:
+                adducts.append(normalize_adduct(spectrum.get("adduct")))
 
-        return {
+        metadata = {
             "charge": self._charge_scaler.transform(charges.reshape(-1, 1)),
             "mz_features": self._mz_scaler.transform(mz_features),
             "n_peaks": self._n_peaks_scaler.transform(number_of_peaks.reshape(-1, 1)),
@@ -308,10 +316,14 @@ class SpectralMetadataExtractor(BaseEstimator, TransformerMixin):
             "mass_spec_ionization_mode": self._mass_spec_ionization_mode_encoder.transform(
                 np.array(mass_spec_ionization_modes).reshape(-1, 1)
             ).toarray(),
-            "adduct": self._adduct_encoder.transform(
-                np.array(adducts).reshape(-1, 1)
-            ).toarray(),
         }
+
+        if self._adduct_encoder is not None:
+            metadata["adduct"] = self._adduct_encoder.transform(
+                np.array(adducts).reshape(-1, 1)
+            ).toarray()
+
+        return metadata
 
     def fit_transform(
         self, X: List[Spectrum], y=None, **fit_params

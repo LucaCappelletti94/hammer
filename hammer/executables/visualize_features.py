@@ -53,7 +53,7 @@ def _visualize_feature(
     if feature is not None:
         name = feature.name()
     else:
-        name = "Spectral Metadata"
+        name = "Spectral Binning"
 
     path = os.path.join(arguments.output_directory, f"{name}.{arguments.image_format}")
 
@@ -71,15 +71,14 @@ def _visualize_feature(
             return
     else:
         assert isinstance(samples[0], Spectrum)
-        x = np.hstack(
-            list(
-                SpectralMetadataExtractor(
-                    verbose=arguments.verbose,
-                    n_jobs=arguments.n_jobs,
-                )
-                .fit_transform(samples)
-                .values()
+        x = (
+            SpectraScaler(
+                include_losses=False,
+                verbose=arguments.verbose,
+                n_jobs=arguments.n_jobs,
             )
+            .fit_transform(samples)
+            .reshape((len(samples), -1))
         )
 
         # x = np.hstack(

@@ -62,7 +62,7 @@ class Dataset(Hashable):
         return total
 
     def all_samples(self) -> Tuple[List[Any], np.ndarray]:
-        """Return all the smiles and labels."""
+        """Return all the samples and labels."""
         all_labels: List[np.ndarray] = []
         samples: List[Any] = []
         for sample, labels in self.iter_samples():
@@ -73,7 +73,7 @@ class Dataset(Hashable):
 
     def primary_split(
         self, test_size: float
-    ) -> Tuple[Tuple[List[str], np.ndarray], Tuple[List[str], np.ndarray]]:
+    ) -> Tuple[Tuple[List[Any], np.ndarray], Tuple[List[Any], np.ndarray]]:
         """Split the dataset into training and test sets."""
         counters: np.ndarray = self.label_counts()
 
@@ -110,15 +110,15 @@ class Dataset(Hashable):
             random_state=self._random_state,
         )
 
-        smiles, labels = self.all_samples()
+        samples, labels = self.all_samples()
 
         return (
             (
-                [smiles[i] for i in train_indices],
+                [samples[i] for i in train_indices],
                 np.vstack([labels[i] for i in train_indices]),
             ),
             (
-                [smiles[i] for i in test_indices],
+                [samples[i] for i in test_indices],
                 np.vstack([labels[i] for i in test_indices]),
             ),
         )
@@ -132,7 +132,7 @@ class Dataset(Hashable):
         ]
     ]:
         """Split the dataset into training and test sets."""
-        (train_smiles, train_labels), (_test_smiles, _test_labels) = self.primary_split(
+        (train_samples, train_labels), (_test_samples, _test_labels) = self.primary_split(
             test_size=test_size,
         )
         counters: np.ndarray = np.sum(train_labels, axis=0)
@@ -150,7 +150,7 @@ class Dataset(Hashable):
             )
 
         # We identify the least common labels.
-        least_common_labels: np.ndarray = np.zeros(len(train_smiles), dtype=np.uint8)
+        least_common_labels: np.ndarray = np.zeros(len(train_samples), dtype=np.uint8)
         for i, train_label in enumerate(train_labels):
             least_common_labels[i] = min(
                 np.argwhere(train_label == 1)[:, 0],
@@ -164,7 +164,7 @@ class Dataset(Hashable):
         )
 
         for train_indices, validation_indices in tqdm(
-            splitter.split(train_smiles, least_common_labels),
+            splitter.split(train_samples, least_common_labels),
             total=number_of_holdouts,
             desc="Holdouts",
             leave=False,
@@ -174,11 +174,11 @@ class Dataset(Hashable):
         ):
             yield (
                 (
-                    [train_smiles[i] for i in train_indices],
+                    [train_samples[i] for i in train_indices],
                     np.vstack([train_labels[i] for i in train_indices]),
                 ),
                 (
-                    [train_smiles[i] for i in validation_indices],
+                    [train_samples[i] for i in validation_indices],
                     np.vstack([train_labels[i] for i in validation_indices]),
                 ),
             )

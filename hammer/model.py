@@ -14,7 +14,9 @@ from keras.api.layers import (  # type: ignore
     Conv1D,
     Flatten,
     MaxPool1D,
+    GlobalAveragePooling1D,
     BatchNormalization,
+    Masking,
 )
 from keras.api.losses import BinaryFocalCrossentropy  # type: ignore
 from keras.api.utils import plot_model  # type: ignore
@@ -50,8 +52,16 @@ from hammer.augmentation_settings import AugmentationSettings
 from hammer.utils import into_canonical_smiles, smiles_to_molecules
 from hammer.dags import LayeredDAG
 from hammer.initializers import LogitBiasInitializer
-from hammer.layers import HarmonizeGraphConvolution
-from hammer.scalers import SpectraScaler
+from hammer.layers import (
+    HarmonizeGraphConvolution,
+    TransformerEncoder,
+    SinePositionEncoding,
+)
+from hammer.scalers import (
+    SpectralMetadataExtractor,
+    SpectralTransformerPreprocessing,
+    SpectraScaler,
+)
 
 
 class Hammer:
@@ -62,7 +72,9 @@ class Hammer:
         dag: LayeredDAG,
         feature_settings: FeatureSettings,
         scalers: Dict[str, RobustScaler],
+        spectral_preprocessor: Optional[SpectralTransformerPreprocessing] = None,
         spectral_scaler: Optional[SpectraScaler] = None,
+        spectral_metadata_extractor: Optional[SpectralMetadataExtractor] = None,
         metadata: Optional[Dict[str, Any]] = None,
         model_path: Optional[str] = None,
         verbose: bool = False,
@@ -80,8 +92,12 @@ class Hammer:
             Feature settings used to compute the features.
         scalers : Optional[Dict[str, RobustScaler]]
             Dictionary of scalers used to scale the features.
-        spectral_scaler : Optional[SpectraScaler]
+        spectral_preprocessor : Optional[SpectralTransformerPreprocessing]
             Scaler used to scale the spectral data.
+        spectral_scaler : Optional[SpectraScaler]
+            Preprocessor used to preprocess the spectral data.
+        spectral_metadata_extractor : Optional[SpectralMetadataExtractor]
+            Extractor used to extract metadata from the spectral data.
         metadata : Optional[Dict[str, Any]]
             Metadata of the classifier model.
             Used to store additional information about the classifier.
@@ -101,7 +117,13 @@ class Hammer:
             self._model = None
 
         self._scalers: Dict[str, RobustScaler] = scalers
+        self._spectral_preprocessor: Optional[SpectralTransformerPreprocessing] = (
+            spectral_preprocessor
+        )
         self._spectral_scaler: Optional[SpectraScaler] = spectral_scaler
+        self._spectral_metadata_extractor: Optional[SpectralMetadataExtractor] = (
+            spectral_metadata_extractor
+        )
         self._dag: LayeredDAG = dag
         self._feature_settings: FeatureSettings = feature_settings
         self._verbose: bool = verbose
@@ -125,16 +147,28 @@ class Hammer:
 
         dag_path = f"{path}/dag.pkl"
         scalers_path = f"{path}/scalers.pkl"
+        spectral_preprocessor_path = f"{path}/spectral_preprocessor.pkl"
         spectral_scaler_path = f"{path}/spectral_scaler.pkl"
+        spectral_metadata_extractor_path = f"{path}/spectral_metadata_extractor.pkl"
         model_path = f"{path}/model.keras"
         feature_settings_path = f"{path}/feature_settings.json"
 
         classifier = Hammer(
             dag=compress_pickle.load(dag_path),
             scalers=compress_pickle.load(scalers_path),
+            spectral_preprocessor=(
+                compress_pickle.load(spectral_preprocessor_path)
+                if os.path.exists(spectral_preprocessor_path)
+                else None
+            ),
             spectral_scaler=(
                 compress_pickle.load(spectral_scaler_path)
                 if os.path.exists(spectral_scaler_path)
+                else None
+            ),
+            spectral_metadata_extractor=(
+                compress_pickle.load(spectral_metadata_extractor_path)
+                if os.path.exists(spectral_metadata_extractor_path)
                 else None
             ),
             feature_settings=FeatureSettings.from_json(feature_settings_path),
@@ -166,34 +200,48 @@ class Hammer:
 
         return Hammer.load_from_path(os.path.join("downloads", version, version))
 
-    def _build_input_modality(
-        self, input_layer: Input, convolutional: bool
-    ) -> KerasTensor:
+    def _build_input_modality(self, input_layer: Input) -> KerasTensor:
         """Build the input modality b-module."""
         hidden = input_layer
-        if convolutional:
-            for i in range(4):
+        if len(input_layer.shape) == 3:
+            while hidden.shape[1] > 256:
                 hidden = Conv1D(
-                    256,
-                    kernel_size=3,
+                    128,
+                    5,
                     activation="relu",
-                    kernel_initializer=HeNormal(),
-                    name=f"conv_{input_layer.name}_{i}",
+                    kernel_initializer=GlorotNormal(),
+                    padding="same",
                 )(hidden)
                 hidden = BatchNormalization()(hidden)
-                hidden = Dropout(0.1)(hidden)
-            hidden = MaxPool1D(pool_size=2)(hidden)
-            hidden = Flatten()(hidden)
-        else:
+                hidden = MaxPool1D()(hidden)
+                hidden = Dropout(0.2)(hidden)
+            positional_encoding = SinePositionEncoding()(hidden)
+            hidden = hidden + positional_encoding
+            for _ in range(3):
+                hidden = TransformerEncoder(
+                    intermediate_dim=512,
+                    num_heads=2,
+                    dropout_rate=0.2,
+                    activation="relu",
+                    kernel_initializer=HeNormal(),
+                )(hidden)
+            hidden = GlobalAveragePooling1D()(hidden)
+        elif len(input_layer.shape) == 2:
             if input_layer.shape[1] > 768:
                 hidden_sizes = 768
             elif input_layer.shape[1] > 512:
                 hidden_sizes = 512
             elif input_layer.shape[1] > 256:
                 hidden_sizes = 256
-            else:
+            elif input_layer.shape[1] > 128:
                 hidden_sizes = 128
-            for i in range(3):
+            elif input_layer.shape[1] > 64:
+                hidden_sizes = 64
+            elif input_layer.shape[1] > 32:
+                hidden_sizes = 32
+            else:
+                hidden_sizes = 16
+            for i in range(4):
                 hidden = Dense(
                     hidden_sizes,
                     activation="relu",
@@ -201,7 +249,10 @@ class Hammer:
                     name=f"dense_{input_layer.name}_{i}",
                 )(hidden)
                 hidden = BatchNormalization()(hidden)
-                hidden = Dropout(0.1)(hidden)
+                if hidden.shape[1] > 16:
+                    hidden = Dropout(0.2)(hidden)
+        else:
+            raise ValueError(f"Input layer has an invalid shape {input_layer.shape}.")
         return hidden
 
     def _build_hidden_layers(self, inputs: List[KerasTensor]) -> KerasTensor:
@@ -211,16 +262,9 @@ class Hammer:
         else:
             hidden = inputs[0]
 
-        if hidden.shape[1] > 512:
-            hidden_sizes = 2048
-        elif hidden.shape[1] > 256:
-            hidden_sizes = 1024
-        else:
-            hidden_sizes = 512
-
-        for i in range(4):
+        for i in range(2):
             hidden = Dense(
-                hidden_sizes,
+                2048,
                 activation="relu",
                 kernel_initializer=GlorotNormal(),
                 name=f"dense_hidden_{i}",
@@ -259,7 +303,7 @@ class Hammer:
         augmentation_settings: Optional[AugmentationSettings] = None,
         model_checkpoint_path: str = "checkpoints/model_checkpoint.keras",
         maximal_number_of_epochs: int = 10_000,
-        batch_size: int = 4096,
+        batch_size: int = 2**9,
     ) -> History:
         """Train the classifier model."""
         spectral_model: bool = isinstance(train_samples[0], Spectrum)
@@ -278,18 +322,38 @@ class Hammer:
         self._metadata["maximal_number_of_epochs"] = maximal_number_of_epochs
 
         if spectral_model:
-            self._spectral_scaler = SpectraScaler(
+            self._spectral_preprocessor = SpectralTransformerPreprocessing(
+                number_of_peaks=128,
                 verbose=self._verbose,
-                dtype=np.float32,
+                n_jobs=self._n_jobs,
+            )
+            self._spectral_scaler = SpectraScaler(
+                include_losses=False,
+                verbose=self._verbose,
+                n_jobs=self._n_jobs,
+            )
+            self._spectral_metadata_extractor = SpectralMetadataExtractor(
+                verbose=self._verbose,
                 n_jobs=self._n_jobs,
             )
 
+            self._spectral_preprocessor.fit(train_samples)
             self._spectral_scaler.fit(train_samples)
+            self._spectral_metadata_extractor.fit(train_samples)
+
             train_features: Dict[str, np.ndarray] = {
-                "spectral_binning": self._spectral_scaler.transform(train_samples)
+                "spectra": self._spectral_preprocessor.transform(train_samples),
+                "spectra_binned": self._spectral_scaler.transform(train_samples),
+                **self._spectral_metadata_extractor.transform(
+                    train_samples,
+                ),
             }
             validation_features: Dict[str, np.ndarray] = {
-                "spectral_binning": self._spectral_scaler.transform(validation_samples),
+                "spectra": self._spectral_preprocessor.transform(validation_samples),
+                "spectra_binned": self._spectral_scaler.transform(validation_samples),
+                **self._spectral_metadata_extractor.transform(
+                    validation_samples,
+                ),
             }
         else:
             train_samples = into_canonical_smiles(
@@ -332,7 +396,7 @@ class Hammer:
 
         input_layers: Dict[str, Input] = {
             train_feature_name: Input(
-                shape=train_feature.shape[1:],
+                shape=train_features[train_feature_name].shape[1:],
                 name=train_feature_name,
                 dtype=train_feature.dtype,
             )
@@ -340,7 +404,7 @@ class Hammer:
         }
 
         input_modalities: List[KerasTensor] = [
-            self._build_input_modality(input_layer, convolutional=spectral_model)
+            self._build_input_modality(input_layer)
             for input_layer in input_layers.values()
         ]
 
@@ -441,16 +505,31 @@ class Hammer:
 
         dag_path = os.path.join(path, "dag.pkl")
         scalers_path = os.path.join(path, "scalers.pkl")
+        spectral_preprocessor_path = os.path.join(path, "spectral_preprocessor.pkl")
         spectral_scaler_path = os.path.join(path, "spectral_scaler.pkl")
+        spectral_metadata_extractor_path = os.path.join(
+            path, "spectral_metadata_extractor.pkl"
+        )
+
         model_path = os.path.join(path, "model.keras")
         feature_settings_path = os.path.join(path, "feature_settings.json")
         model_plot_path = os.path.join(path, "model.png")
 
         compress_pickle.dump(self._dag, dag_path)
         compress_pickle.dump(self._scalers, scalers_path)
+        compress_pickle.dump(self._spectral_preprocessor, spectral_preprocessor_path)
+        if self._spectral_metadata_extractor is not None:
+            compress_pickle.dump(
+                self._spectral_metadata_extractor, spectral_metadata_extractor_path
+            )
 
         if self._spectral_scaler is not None:
             compress_pickle.dump(self._spectral_scaler, spectral_scaler_path)
+
+        if self._spectral_preprocessor is not None:
+            compress_pickle.dump(
+                self._spectral_preprocessor, spectral_preprocessor_path
+            )
 
         compress_json.dump(self._feature_settings.to_dict(), feature_settings_path)
         self._model.save(model_path)
@@ -481,14 +560,17 @@ class Hammer:
     ) -> Dict[str, np.ndarray]:
         """Transform a list of samples into a dictionary of features."""
         if isinstance(samples[0], Spectrum):
-            if self._spectral_scaler is None:
+            if (
+                self._spectral_preprocessor is None
+                or self._spectral_scaler is None
+                or self._spectral_metadata_extractor is None
+            ):
                 raise ValueError("Model has not been trained on spectral data.")
-            return dict(
-                zip(
-                    ["mz", "intensities", "population"],
-                    self._spectral_scaler.transform(samples),
-                )
-            )
+            return {
+                "spectra": self._spectral_preprocessor.transform(samples),
+                "spectra_binned": self._spectral_scaler.transform(samples),
+                **self._spectral_metadata_extractor.transform(samples),
+            }
         samples = into_canonical_smiles(
             samples, verbose=self._verbose, n_jobs=self._n_jobs
         )

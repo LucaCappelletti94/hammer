@@ -2,17 +2,17 @@
 
 from typing import List, Tuple, Type, Optional, Union, Callable
 from keras import ops  # type: ignore
-from keras.api.initializers import Initializer  # type: ignore
-from keras.api import initializers  # type: ignore
-from keras.api import activations  # type: ignore
-from keras.api.regularizers import Regularizer  # type: ignore
-from keras.api import regularizers  # type: ignore
-from keras.api.constraints import Constraint  # type: ignore
-from keras.api import constraints  # type: ignore
-from keras.api.layers import Layer  # type: ignore
-from keras.api.utils import register_keras_serializable  # type: ignore
-from keras.api import Variable  # type: ignore
-from keras.api.initializers import Constant  # type: ignore
+from tensorflow.keras.initializers import Initializer  # type: ignore
+from tensorflow.keras import initializers  # type: ignore
+from tensorflow.keras import activations  # type: ignore
+from tensorflow.keras.regularizers import Regularizer  # type: ignore
+from tensorflow.keras import regularizers  # type: ignore
+from tensorflow.keras.constraints import Constraint  # type: ignore
+from tensorflow.keras import constraints  # type: ignore
+from tensorflow.keras.layers import Layer  # type: ignore
+from tensorflow.keras.utils import register_keras_serializable  # type: ignore
+from tensorflow.keras import Variable  # type: ignore
+from tensorflow.keras.initializers import Constant  # type: ignore
 from scipy.sparse import csr_matrix
 import numpy as np
 import tensorflow as tf  # type: ignore

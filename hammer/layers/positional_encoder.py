@@ -2,8 +2,8 @@
 
 from keras import ops  # type: ignore
 from keras import KerasTensor
-from keras.api.layers import Layer  # type: ignore
-from keras.api.utils import register_keras_serializable  # type: ignore
+from tensorflow.keras.layers import Layer  # type: ignore
+from tensorflow.keras.utils import register_keras_serializable  # type: ignore
 
 
 @register_keras_serializable(package="hammer")

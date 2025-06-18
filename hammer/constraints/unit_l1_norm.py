@@ -1,10 +1,10 @@
 """Submodule defining the UnitL1Norm keras constraint."""
 
-from keras.api.constraints import Constraint  # type: ignore
-from keras.api import Variable  # type: ignore
-from keras.api import ops  # type: ignore
-from keras.api.backend import epsilon  # type: ignore
-from keras.api.saving import register_keras_serializable  # type: ignore
+from tensorflow.keras.constraints import Constraint  # type: ignore
+from tensorflow.keras import Variable  # type: ignore
+from tensorflow.keras import ops  # type: ignore
+from tensorflow.keras.backend import epsilon  # type: ignore
+from tensorflow.keras.saving import register_keras_serializable  # type: ignore
 
 
 @register_keras_serializable(package="hammer")  # type: ignore

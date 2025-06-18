@@ -9,7 +9,7 @@ from hammer.molecular_features.feature_interface import FeatureInterface
 
 
 class MAP4(FeatureInterface):
-    """Class defining the Autocorrelation fingerprint feature implementation."""
+    """Class defining the MAP4 fingerprint feature implementation."""
 
     def __init__(
         self,
@@ -18,7 +18,7 @@ class MAP4(FeatureInterface):
         verbose: bool = True,
         n_jobs: Optional[int] = None,
     ) -> None:
-        """Initialize the Autocorrelation fingerprint feature."""
+        """Initialize the MAP4 fingerprint feature."""
         if n_jobs is None or n_jobs < 1:
             n_jobs = cpu_count()
         self._n_jobs = n_jobs

@@ -1,8 +1,8 @@
 """Bias inizialer for unbalanced prediction tasks."""
 
-from keras.api.initializers import Initializer
-from keras.api.backend import epsilon
-from keras.api.utils import register_keras_serializable
+from tensorflow.keras.initializers import Initializer
+from tensorflow.keras.backend import epsilon
+from tensorflow.keras.utils import register_keras_serializable
 import numpy as np
 
 

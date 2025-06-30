@@ -3,12 +3,12 @@
 from typing import Union
 from keras import ops  # type: ignore
 from keras import KerasTensor
-from keras.api.layers import Layer  # type: ignore
-from keras.api.utils import register_keras_serializable  # type: ignore
+from tensorflow.keras.layers import Layer  # type: ignore
+from tensorflow.keras.utils import register_keras_serializable  # type: ignore
 from keras import activations
 from keras import initializers
-from keras.api.initializers import Initializer
-from keras.api.layers import MultiHeadAttention, Dense, LayerNormalization, Dropout
+from tensorflow.keras.initializers import Initializer
+from tensorflow.keras.layers import MultiHeadAttention, Dense, LayerNormalization, Dropout
 
 
 def clone_initializer(initializer: Union[Initializer, str]) -> Initializer:

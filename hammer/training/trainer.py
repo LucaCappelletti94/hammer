@@ -4,7 +4,7 @@ import os
 import gc
 from typing import Optional
 import pandas as pd
-from keras.api.backend import clear_session  # type: ignore
+from tensorflow.keras.backend import clear_session  # type: ignore
 from dict_hash import sha256, Hashable
 from hammer.datasets import Dataset
 from hammer.model import Hammer

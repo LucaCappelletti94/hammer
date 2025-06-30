@@ -6,7 +6,7 @@ import shutil
 from copy import deepcopy
 import warnings
 from keras import Model  # type: ignore
-from keras.api.layers import (  # type: ignore
+from tensorflow.keras.layers import (  # type: ignore
     Concatenate,
     Input,
     Dense,
@@ -18,22 +18,22 @@ from keras.api.layers import (  # type: ignore
     BatchNormalization,
     Masking,
 )
-from keras.api.losses import BinaryFocalCrossentropy  # type: ignore
-from keras.api.utils import plot_model  # type: ignore
-from keras.api.callbacks import (  # type: ignore
+from tensorflow.keras.losses import BinaryFocalCrossentropy  # type: ignore
+from tensorflow.keras.utils import plot_model  # type: ignore
+from tensorflow.keras.callbacks import (  # type: ignore
     TerminateOnNaN,
     ReduceLROnPlateau,
     EarlyStopping,
     History,
 )
-from keras.api.optimizers import (  # type: ignore
+from tensorflow.keras.optimizers import (  # type: ignore
     Adam,
 )
-from keras.api.initializers import GlorotNormal, HeNormal  # type: ignore
-from keras.api.saving import (  # type: ignore
+from tensorflow.keras.initializers import GlorotNormal, HeNormal  # type: ignore
+from tensorflow.keras.saving import (  # type: ignore
     load_model,
 )
-from keras.api import KerasTensor  # type: ignore
+from tensorflow.keras import KerasTensor  # type: ignore
 import compress_json
 from downloaders import BaseDownloader
 from tqdm.keras import TqdmCallback
